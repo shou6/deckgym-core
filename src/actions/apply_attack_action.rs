@@ -36,9 +36,10 @@ use super::{
     },
     outcomes::{CoinSeq, Outcomes},
     shared_mutations::{
-        pokemon_search_outcomes, pokemon_search_outcomes_by_type, search_and_bench_basic,
-        search_and_bench_by_name, search_and_bench_multiple_by_names,
-        search_to_hand_by_evolves_from, supporter_search_outcomes,
+        pokemon_search_outcomes, pokemon_search_outcomes_by_type,
+        recover_item_from_discard_outcomes, search_and_bench_basic, search_and_bench_by_name,
+        search_and_bench_multiple_by_names, search_to_hand_by_evolves_from,
+        supporter_search_outcomes,
     },
     SimpleAction,
 };
@@ -301,6 +302,9 @@ fn forecast_effect_attack_by_mechanic(
         ),
         Mechanic::SearchToHandSupporterCard => AttackOutcomes::from_effect_outcomes(
             supporter_search_outcomes(state.current_player, state),
+        ),
+        Mechanic::RecoverItemFromDiscardPile => AttackOutcomes::from_effect_outcomes(
+            recover_item_from_discard_outcomes(state.current_player, state),
         ),
         Mechanic::SearchToBenchByName { name } => {
             AttackOutcomes::from_effect_outcomes(search_and_bench_by_name(state, name.clone()))

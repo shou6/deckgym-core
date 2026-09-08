@@ -306,6 +306,8 @@ mod team_rockets_moltres_ex_heat_charged_test;
 mod team_rockets_raticate_ex_test;
 #[path = "pokemon/team_rockets_slowking_ex_test.rs"]
 mod team_rockets_slowking_ex_test;
+#[path = "pokemon/team_rockets_slowpoke_test.rs"]
+mod team_rockets_slowpoke_test;
 #[path = "pokemon/team_rockets_weezing_ex_test.rs"]
 mod team_rockets_weezing_ex_test;
 #[path = "pokemon/team_rockets_zapdos_ex_thunderclaw_test.rs"]

@@ -1316,6 +1316,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         Mechanic::SearchToHandSupporterCard,
     );
     map.insert(
+        "Put a random Item card from your discard pile into your hand.",
+        Mechanic::RecoverItemFromDiscardPile,
+    );
+    map.insert(
         "Put a random Pokémon from your deck into your hand.",
         Mechanic::SearchRandomPokemonToHand,
     );

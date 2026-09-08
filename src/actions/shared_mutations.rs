@@ -87,6 +87,44 @@ pub(crate) fn supporter_search_outcomes(acting_player: usize, state: &State) -> 
     )
 }
 
+/// Put a random Item card from `acting_player`'s discard pile into their hand.
+///
+/// Unlike the search mechanics above this draws from the discard pile, not the deck, so it
+/// cannot reuse `card_search_outcomes_with_filter`. One outcome is produced per distinct
+/// Item, mirroring how Celestic Town Elder recovers a Basic Pokémon.
+pub(crate) fn recover_item_from_discard_outcomes(acting_player: usize, state: &State) -> Outcomes {
+    let items: Vec<Card> = state.discard_piles[acting_player]
+        .iter()
+        .filter(|card| {
+            matches!(card, Card::Trainer(trainer_card)
+                if trainer_card.trainer_card_type == crate::models::TrainerType::Item)
+        })
+        .cloned()
+        .collect();
+
+    if items.is_empty() {
+        return Outcomes::single_fn(|_, _, _| {});
+    }
+
+    let probabilities = vec![1.0 / (items.len() as f64); items.len()];
+    let mutations: Mutations = items
+        .into_iter()
+        .map(|item| -> crate::actions::apply_action_helpers::Mutation {
+            Box::new(move |_, state, action| {
+                if let Some(idx) = state.discard_piles[action.actor]
+                    .iter()
+                    .position(|card| card == &item)
+                {
+                    state.discard_piles[action.actor].remove(idx);
+                    state.hands[action.actor].push(item.clone());
+                }
+            })
+        })
+        .collect();
+
+    Outcomes::from_parts(probabilities, mutations)
+}
+
 fn card_search_outcomes_with_filter<F>(
     acting_player: usize,
     state: &State,

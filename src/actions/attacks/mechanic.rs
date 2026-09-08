@@ -70,6 +70,9 @@ pub enum Mechanic {
         name: String,
     },
     SearchToHandSupporterCard,
+    /// Put a random Item card from your discard pile into your hand
+    /// (Team Rocket's Slowpoke's Scavenge).
+    RecoverItemFromDiscardPile,
     InflictStatusConditions {
         conditions: Vec<StatusCondition>,
         target_opponent: bool,
