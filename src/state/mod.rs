@@ -218,6 +218,39 @@ impl State {
         )
     }
 
+    /// Set up a game where each player's randomness is independent of the other's.
+    ///
+    /// [`Self::initialize`] shuffles both decks from one generator, so changing a
+    /// single card in one deck shifts every draw that follows -- including the
+    /// opponent's. That makes it impossible to compare two similar decks fairly:
+    /// the comparison measures luck as much as the change being tested.
+    ///
+    /// Here each player shuffles and rolls energy from their own generator, so a
+    /// change to one deck leaves the other player's game untouched.
+    ///
+    /// The coin flip for the starting player uses `rng_a`.
+    pub fn initialize_per_player(
+        deck_a: &Deck,
+        deck_b: &Deck,
+        rng_a: &mut impl Rng,
+        rng_b: &mut impl Rng,
+    ) -> Self {
+        let mut state = Self::new(deck_a, deck_b);
+
+        state.decks[0].shuffle(true, rng_a);
+        state.decks[1].shuffle(true, rng_b);
+        for _ in 0..5 {
+            state.maybe_draw_card(0);
+            state.maybe_draw_card(1);
+        }
+        state.current_player = rng_a.gen_range(0..2);
+
+        state.energy_zone[0].next = Some(roll_energy(&state.decks[0], rng_a));
+        state.energy_zone[1].next = Some(roll_energy(&state.decks[1], rng_b));
+
+        state
+    }
+
     pub fn initialize(deck_a: &Deck, deck_b: &Deck, rng: &mut impl Rng) -> Self {
         let mut state = Self::new(deck_a, deck_b);
 

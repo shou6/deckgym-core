@@ -39,6 +39,28 @@ impl<'a> Game<'a> {
         }
     }
 
+    /// Create a game where each player's randomness is independent of the other's.
+    ///
+    /// See [`State::initialize_per_player`]. Use this when comparing two similar
+    /// decks: with [`Self::new`], changing one card in a deck also changes what
+    /// the opponent draws, so the comparison measures luck as much as the change.
+    pub fn new_per_player(players: Vec<Box<dyn Player>>, seed_a: u64, seed_b: u64) -> Self {
+        let mut rng_a = StdRng::seed_from_u64(seed_a);
+        let mut rng_b = StdRng::seed_from_u64(seed_b);
+        let deck_a = players[0].get_deck();
+        let deck_b = players[1].get_deck();
+        let state = State::initialize_per_player(&deck_a, &deck_b, &mut rng_a, &mut rng_b);
+        Game {
+            seed: seed_a,
+            rng: rng_a,
+            id: Uuid::new_v4(),
+            players,
+            state,
+            debug: true,
+            event_handler: None,
+        }
+    }
+
     pub fn new(players: Vec<Box<dyn Player>>, seed: u64) -> Self {
         let mut rng = StdRng::seed_from_u64(seed);
         let deck_a = players[0].get_deck();
