@@ -123,6 +123,15 @@ impl<'a> Game<'a> {
         self.state.clone()
     }
 
+    /// Borrow the current state without cloning it.
+    ///
+    /// `get_state_clone` copies the whole state, which is costly inside a search
+    /// loop that applies one action at a time. Callers that only read the state
+    /// (evaluating a position, enumerating actions) can use this instead.
+    pub fn state(&self) -> &State {
+        &self.state
+    }
+
     // TODO: Maybe make these only available for testing?
     pub fn apply_action(&mut self, action: &Action) {
         apply_action(&mut self.rng, &mut self.state, action);
