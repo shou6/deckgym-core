@@ -123,6 +123,17 @@ impl<'a> Game<'a> {
         self.state.clone()
     }
 
+    /// Reseed the random number generator.
+    ///
+    /// A search that replays the same position many times needs each replay to
+    /// draw the same cards, otherwise candidate moves are compared under
+    /// different shuffles and the comparison measures luck as much as skill.
+    /// `set_state` rewinds the board but not the generator, so callers that
+    /// rewind a position should reseed as well.
+    pub fn set_rng_seed(&mut self, seed: u64) {
+        self.rng = StdRng::seed_from_u64(seed);
+    }
+
     /// Borrow the current state without cloning it.
     ///
     /// `get_state_clone` copies the whole state, which is costly inside a search
