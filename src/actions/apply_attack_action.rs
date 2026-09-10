@@ -764,6 +764,15 @@ fn forecast_effect_attack_by_mechanic(
             *damage_per_hit,
             *include_own_bench,
         ),
+        Mechanic::ExtraDamageIfKnockedOutLastTurnAndInflictStatus {
+            extra_damage,
+            conditions,
+        } => extra_damage_if_knocked_out_last_turn_and_inflict_status(
+            state,
+            attack.fixed_damage,
+            *extra_damage,
+            conditions.clone(),
+        ),
         Mechanic::ExtraDamageIfKnockedOutLastTurn {
             energy_type,
             extra_damage,
@@ -1071,6 +1080,22 @@ fn forecast_effect_attack_by_mechanic(
             self_discard_type_energy_and_damage_any_opponent_pokemon(*energy_type, *count, *damage)
         }
         Mechanic::NothingIfBothTails => nothing_if_both_tails(attack.fixed_damage),
+        Mechanic::ExtraDamageIfDefenderToolAttached { extra_damage } => {
+            extra_damage_if_defender_tool_attached(state, attack.fixed_damage, *extra_damage)
+        }
+        Mechanic::CoinFlipDragOpponentBench => coin_flip_drag_opponent_bench(attack.fixed_damage),
+        Mechanic::SelfDiscardAllEnergyAndInflictStatus { conditions } => {
+            self_discard_all_energy_and_inflict_status(attack.fixed_damage, conditions.clone())
+        }
+        Mechanic::AlsoRandomBenchDamage { bench_damage } => {
+            also_random_bench_damage(attack.fixed_damage, *bench_damage)
+        }
+        Mechanic::SwitchSelfWithTypedBench { energy_type } => {
+            switch_self_with_typed_bench(state, attack.fixed_damage, *energy_type)
+        }
+        Mechanic::DiscardTopThenExtraDamageIfItem { extra_damage } => {
+            discard_top_then_extra_damage_if_item(attack.fixed_damage, *extra_damage)
+        }
         Mechanic::ExtraDamageIfOpponentHasTypeInPlay {
             energy_type,
             extra_damage,
@@ -3650,6 +3675,25 @@ fn damage_per_own_tool_attached(state: &State, damage_per: u32) -> AttackOutcome
     active_damage_doutcome(damage_per * tool_count)
 }
 
+/// Toxtricity - Vengeful Shock: the revenge bonus comes with status conditions,
+/// and both only land when something was knocked out last turn.
+fn extra_damage_if_knocked_out_last_turn_and_inflict_status(
+    state: &State,
+    base_damage: u32,
+    extra_damage: u32,
+    conditions: Vec<StatusCondition>,
+) -> AttackOutcomes {
+    if !state.was_knocked_out_by_opponent_attack_last_turn(None) {
+        return active_damage_doutcome(base_damage);
+    }
+    active_damage_effect_doutcome(base_damage + extra_damage, move |_, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        for condition in &conditions {
+            state.apply_status_condition(opponent, 0, *condition);
+        }
+    })
+}
+
 fn extra_damage_if_knocked_out_last_turn_attack(
     state: &State,
     base_damage: u32,
@@ -4290,6 +4334,129 @@ fn self_discard_type_energy_and_damage_any_opponent_pokemon(
             state.move_generation_stack.push((action.actor, choices));
         }
     })
+}
+
+/// Galvantula - Electric Shock: the attacker pays every Energy it has, then the
+/// defender picks up the status conditions.
+fn self_discard_all_energy_and_inflict_status(
+    damage: u32,
+    conditions: Vec<StatusCondition>,
+) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        let attached = state.get_active(action.actor).attached_energy.clone();
+        state.discard_from_active(action.actor, &attached);
+        let opponent = (action.actor + 1) % 2;
+        for condition in &conditions {
+            state.apply_status_condition(opponent, 0, *condition);
+        }
+    })
+}
+
+/// Ampharos - Zapping Bullet: the splash lands on a Benched Pokemon picked at
+/// random, so the attacker gets no say in it.
+fn also_random_bench_damage(active_damage: u32, bench_damage: u32) -> AttackOutcomes {
+    active_damage_effect_doutcome(active_damage, move |rng, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        let bench: Vec<usize> = state
+            .enumerate_bench_pokemon(opponent)
+            .map(|(in_play_idx, _)| in_play_idx)
+            .collect();
+        if bench.is_empty() {
+            return;
+        }
+        let chosen = bench[rng.gen_range(0..bench.len())];
+        if let Some(pokemon) = state.in_play_pokemon[opponent][chosen].as_mut() {
+            pokemon.apply_damage(bench_damage);
+        }
+    })
+}
+
+/// Tapu Koko - Volt Switch: only a Benched Pokemon of the right type will do.
+fn switch_self_with_typed_bench(
+    state: &State,
+    damage: u32,
+    energy_type: EnergyType,
+) -> AttackOutcomes {
+    let choices: Vec<SimpleAction> = state
+        .enumerate_bench_pokemon(state.current_player)
+        .filter(|(_, pokemon)| pokemon.get_energy_type() == Some(energy_type))
+        .map(|(in_play_idx, _)| SimpleAction::Activate {
+            player: state.current_player,
+            in_play_idx,
+        })
+        .collect();
+    AttackOutcomes::single(AttackOutcome::damage_then_effect(
+        vec![(damage, true, 0)],
+        move |_, state, action| {
+            let attacker_alive = state.in_play_pokemon[action.actor][0]
+                .as_ref()
+                .is_some_and(|p| !p.is_knocked_out());
+            if !choices.is_empty() && attacker_alive {
+                state
+                    .move_generation_stack
+                    .push((action.actor, choices.clone()));
+            }
+        },
+    ))
+}
+
+/// Pachirisu - Crackling Snap: the top card is discarded either way; being an
+/// Item is what adds the damage.
+fn discard_top_then_extra_damage_if_item(base_damage: u32, extra_damage: u32) -> AttackOutcomes {
+    AttackOutcomes::single(AttackOutcome::effect_only(move |_, state, action| {
+        let bonus = match state.decks[action.actor].draw() {
+            Some(card) => {
+                let is_item = matches!(
+                    &card,
+                    Card::Trainer(trainer) if trainer.trainer_card_type == TrainerType::Item
+                );
+                state.discard_piles[action.actor].push(card);
+                if is_item {
+                    extra_damage
+                } else {
+                    0
+                }
+            }
+            None => 0,
+        };
+        let opponent = (action.actor + 1) % 2;
+        if let Some(defender) = state.in_play_pokemon[opponent][0].as_mut() {
+            defender.apply_damage(base_damage + bonus);
+        }
+    }))
+}
+
+/// Rotom - Assault Laser: the Tool that matters is the defender's.
+fn extra_damage_if_defender_tool_attached(
+    state: &State,
+    base_damage: u32,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let has_tool = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .is_some_and(|defender| defender.attached_tool.is_some());
+    active_damage_doutcome(base_damage + if has_tool { extra_damage } else { 0 })
+}
+
+/// Chinchou - Luring Glow: heads drags one of the opponent's Benched Pokemon out.
+fn coin_flip_drag_opponent_bench(damage: u32) -> AttackOutcomes {
+    AttackOutcomes::binary_coin(
+        active_damage_effect_outcome(damage, |_, state, action| {
+            let opponent = (action.actor + 1) % 2;
+            let choices: Vec<SimpleAction> = state
+                .enumerate_bench_pokemon(opponent)
+                .map(|(in_play_idx, _)| SimpleAction::Activate {
+                    player: opponent,
+                    in_play_idx,
+                })
+                .collect();
+            if !choices.is_empty() {
+                state.move_generation_stack.push((action.actor, choices));
+            }
+        }),
+        active_damage_outcome(damage),
+    )
 }
 
 /// Bronzong - Psychic Resonance: the opponent only needs the type somewhere in

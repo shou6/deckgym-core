@@ -540,6 +540,12 @@ pub enum Mechanic {
         energy_type: Option<EnergyType>,
         extra_damage: u32,
     },
+    /// Toxtricity - Vengeful Shock: the revenge bonus also leaves the defender
+    /// with status conditions.
+    ExtraDamageIfKnockedOutLastTurnAndInflictStatus {
+        extra_damage: u32,
+        conditions: Vec<StatusCondition>,
+    },
     ExtraDamageIfAttackUsedDuringOwnLastTurn {
         attack_name: String,
         extra_damage: u32,
@@ -758,6 +764,34 @@ pub enum Mechanic {
     /// Druddigon - Giga Claw: flip 2 coins; the attack does nothing if both are
     /// tails.
     NothingIfBothTails,
+    /// Chinchou - Luring Glow: on heads the opponent's Active is replaced by one
+    /// of their Benched Pokemon, chosen by the attacker.
+    CoinFlipDragOpponentBench,
+    /// Galvantula - Electric Shock: pay every Energy on the attacker, then apply
+    /// status conditions to the defender.
+    SelfDiscardAllEnergyAndInflictStatus {
+        conditions: Vec<StatusCondition>,
+    },
+    /// Ampharos - Zapping Bullet: extra damage to one of the opponent's Benched
+    /// Pokemon, picked at random rather than by the attacker.
+    AlsoRandomBenchDamage {
+        bench_damage: u32,
+    },
+    /// Tapu Koko - Volt Switch: swap the attacker for a Benched Pokemon of
+    /// `energy_type`. `SwitchSelfWithBench` takes any Benched Pokemon.
+    SwitchSelfWithTypedBench {
+        energy_type: EnergyType,
+    },
+    /// Pachirisu - Crackling Snap: discard the top card of the attacker's deck and
+    /// add damage when it turns out to be an Item.
+    DiscardTopThenExtraDamageIfItem {
+        extra_damage: u32,
+    },
+    /// Rotom - Assault Laser: extra damage while the *defender* holds a Tool.
+    /// `ExtraDamageIfToolAttached` looks at the attacker's own Tool instead.
+    ExtraDamageIfDefenderToolAttached {
+        extra_damage: u32,
+    },
     /// Bronzong - Psychic Resonance: extra damage while the opponent has any
     /// Pokemon of `energy_type` anywhere in play, Bench included.
     ExtraDamageIfOpponentHasTypeInPlay {

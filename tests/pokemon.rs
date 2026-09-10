@@ -192,6 +192,8 @@ mod lanturn_ex_test;
 mod ledian_swift_test;
 #[path = "pokemon/legacy_ability_logic_test.rs"]
 mod legacy_ability_logic_test;
+#[path = "pokemon/lightning_batch_test.rs"]
+mod lightning_batch_test;
 #[path = "pokemon/lilligant_toughness_aroma_test.rs"]
 mod lilligant_toughness_aroma_test;
 #[path = "pokemon/lucario_b3_test.rs"]
