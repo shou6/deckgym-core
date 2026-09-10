@@ -22,6 +22,7 @@ use crate::{
     hooks::{
         attack_effect_ignores_opponent_active_effects, can_evolve_into, contains_energy,
         get_attack_cost, get_extra_random_spread_hits, get_retreat_cost_for, get_stage,
+        to_playable_card,
     },
     models::{Attack, Card, EnergyType, StatusCondition, TrainerType},
     tools::has_tool,
@@ -934,6 +935,7 @@ fn forecast_effect_attack_by_mechanic(
             *extra_damage,
         ),
         Mechanic::DamageEqualToSelfRemainingHp => damage_equal_to_self_remaining_hp(state),
+        Mechanic::DevolveDefenderToHand => devolve_defender_to_hand(attack.fixed_damage),
         Mechanic::ExtraDamageIfPointsExactly {
             opponent,
             points,
@@ -3907,6 +3909,40 @@ fn extra_damage_if_defender_any_type(
         .is_some_and(|kind| energy_types.contains(&kind));
     let bonus = if matches { extra_damage } else { 0 };
     active_damage_doutcome(base_damage + bonus)
+}
+
+/// Celebi - Temporal Leaves: after damage, take the Evolution card off the
+/// defender and hand it back. What is underneath keeps the Energy, the Tool and
+/// the damage already done, which is how devolution works in the app.
+fn devolve_defender_to_hand(damage: u32) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        let Some(defender) = state.in_play_pokemon[opponent][0].as_ref() else {
+            return;
+        };
+        let Some(underneath) = defender.cards_behind.last().cloned() else {
+            return; // a Basic has nothing to peel off
+        };
+        let evolution = defender.card.clone();
+        let damage_counters = defender.get_damage_counters();
+        let attached_energy = defender.attached_energy.clone();
+        let attached_tool = defender.attached_tool.clone();
+        let mut remaining_behind = defender.cards_behind.clone();
+        remaining_behind.pop();
+
+        // Devolving onto a smaller HP pool can leave it knocked out; the usual
+        // knockout sweep after the attack picks that up.
+        let mut devolved = to_playable_card(&underneath, true);
+        devolved.cards_behind = remaining_behind;
+        devolved.attached_energy = attached_energy;
+        devolved.attached_tool = attached_tool;
+        devolved.apply_damage(damage_counters);
+        state.in_play_pokemon[opponent][0] = Some(devolved);
+        state.hands[opponent].push(evolution);
+        state.refresh_starting_plains_bonus_for_idx(opponent, 0);
+        state.refresh_double_grass_bonus_for_player(opponent);
+        state.refresh_ally_hp_bonus_for_player(opponent);
+    })
 }
 
 fn damage_equal_to_self_remaining_hp(state: &State) -> AttackOutcomes {

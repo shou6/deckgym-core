@@ -406,6 +406,9 @@ pub enum Mechanic {
     /// Teal Mask Ogerpon - Ogre's Whip: damage equal to this Pokemon's own
     /// remaining HP.
     DamageEqualToSelfRemainingHp,
+    /// Celebi - Temporal Leaves: peel the top Evolution card off the defender and
+    /// put it into its owner's hand. Energy, Tool and damage stay on what remains.
+    DevolveDefenderToHand,
     DamageUnaffectedByWeakness,
     /// Sawk's Brick Break: fixed damage whose value "isn't affected by any effects on your
     /// opponent's Active Pokémon." The bypass itself is handled in `hooks::modify_damage` and the

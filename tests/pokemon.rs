@@ -50,6 +50,8 @@ mod cascoon_harden_test;
 mod castform_test;
 #[path = "pokemon/caterpie_quick_growth_test.rs"]
 mod caterpie_quick_growth_test;
+#[path = "pokemon/celebi_temporal_leaves_test.rs"]
+mod celebi_temporal_leaves_test;
 #[path = "pokemon/celebi_time_recall_test.rs"]
 mod celebi_time_recall_test;
 #[path = "pokemon/chansey_blissey_test.rs"]
