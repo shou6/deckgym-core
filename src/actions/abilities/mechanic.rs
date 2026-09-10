@@ -103,6 +103,9 @@ pub enum AbilityMechanic {
         energy_type: EnergyType,
         amount: u8,
     },
+    /// Heatran: "If you have Arceus or Arceus ex in play, this Pokémon has no
+    /// Retreat Cost."
+    NoRetreatIfArceusInPlay,
     ReduceAttackCostIfArceusInPlay {
         amount: u8,
     },

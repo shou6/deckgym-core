@@ -192,7 +192,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "If you have Arceus or Arceus ex in play, attacks used by this Pokémon do +30 damage to your opponent's Active Pokémon.",
             AbilityMechanic::IncreaseDamageIfArceusInPlay { amount: 30 },
         );
-        // map.insert("If you have Arceus or Arceus ex in play, this Pokémon has no Retreat Cost.", todo_implementation);
+        map.insert(
+            "If you have Arceus or Arceus ex in play, this Pokémon has no Retreat Cost.",
+            AbilityMechanic::NoRetreatIfArceusInPlay,
+        );
         map.insert(
             "If you have Arceus or Arceus ex in play, this Pokémon takes -30 damage from attacks.",
             AbilityMechanic::ReduceDamageFromAttacksIfArceusInPlay { amount: 30 },

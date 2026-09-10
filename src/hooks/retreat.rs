@@ -44,6 +44,16 @@ pub(crate) fn get_retreat_cost_for(
         {
             return vec![];
         }
+        // Heatran: free while its owner has an Arceus in play.
+        if matches!(
+            get_ability_mechanic(&card.card),
+            Some(AbilityMechanic::NoRetreatIfArceusInPlay)
+        ) && state
+            .enumerate_in_play_pokemon(owner)
+            .any(|(_, pokemon)| pokemon.get_name().starts_with("Arceus"))
+        {
+            return vec![];
+        }
         // Wimpod - Wimp Out: free only while it is still its owner's first turn.
         if matches!(
             get_ability_mechanic(&card.card),

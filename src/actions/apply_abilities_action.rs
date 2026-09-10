@@ -139,6 +139,9 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::ReduceAttackCostIfToolAttached { .. } => {
             panic!("ReduceAttackCostIfToolAttached is a passive ability")
         }
+        AbilityMechanic::NoRetreatIfArceusInPlay => {
+            panic!("NoRetreatIfArceusInPlay is a passive ability")
+        }
         AbilityMechanic::ReduceAttackCostIfArceusInPlay { .. } => {
             panic!("ReduceAttackCostIfArceusInPlay is a passive ability")
         }

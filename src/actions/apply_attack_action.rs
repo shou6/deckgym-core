@@ -822,6 +822,9 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::DamageAndDiscardOpponentDeck { discard_count } => {
             damage_and_discard_opponent_deck(attack.fixed_damage, *discard_count)
         }
+        Mechanic::DamageAndDiscardBothDecks { discard_count } => {
+            damage_and_discard_both_decks(attack.fixed_damage, *discard_count)
+        }
         Mechanic::FlipUntilTailsDiscardOpponentDeck => {
             flip_until_tails_discard_opponent_deck(attack.fixed_damage)
         }
@@ -1043,6 +1046,33 @@ fn forecast_effect_attack_by_mechanic(
         }
         Mechanic::ExtraDamageIfDefenderPoisoned { extra_damage } => {
             extra_damage_if_defender_poisoned(state, attack.fixed_damage, *extra_damage)
+        }
+        Mechanic::ExtraDamagePerDefenderSpecialCondition {
+            damage_per_condition,
+        } => extra_damage_per_defender_special_condition(
+            state,
+            attack.fixed_damage,
+            *damage_per_condition,
+        ),
+        Mechanic::AlsoBenchDamageIfPokemonOnBench {
+            pokemon_name,
+            bench_damage,
+        } => also_bench_damage_if_pokemon_on_bench(
+            state,
+            attack.fixed_damage,
+            pokemon_name,
+            *bench_damage,
+        ),
+        Mechanic::SelfDiscardTypeEnergyAndDamageAnyOpponentPokemon {
+            energy_type,
+            count,
+            damage,
+        } => {
+            self_discard_type_energy_and_damage_any_opponent_pokemon(*energy_type, *count, *damage)
+        }
+        Mechanic::NothingIfBothTails => nothing_if_both_tails(attack.fixed_damage),
+        Mechanic::ExtraDamageIfDefenderBurned { extra_damage } => {
+            extra_damage_if_defender_burned(state, attack.fixed_damage, *extra_damage)
         }
         Mechanic::ExtraDamageIfDefenderConfused { extra_damage } => {
             extra_damage_if_defender_confused(state, attack.fixed_damage, *extra_damage)
@@ -2390,6 +2420,20 @@ fn flip_until_tails_discard_opponent_deck(damage: u32) -> AttackOutcomes {
         active_damage_effect_outcome(damage, move |_, state, action| {
             discard_top_opponent_deck(state, action.actor, heads);
         })
+    })
+}
+
+/// Ultra Necrozma ex - Shoegaze: both players lose the top of their deck.
+fn damage_and_discard_both_decks(damage: u32, discard_count: usize) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        for player in [action.actor, (action.actor + 1) % 2] {
+            for _ in 0..discard_count {
+                let Some(card) = state.decks[player].draw() else {
+                    break;
+                };
+                state.discard_piles[player].push(card);
+            }
+        }
     })
 }
 
@@ -4146,6 +4190,101 @@ fn extra_damage_if_defender_poisoned(
         base_damage
     };
     active_damage_doutcome(damage)
+}
+
+/// Team Rocket's Magmar - Derisive Roasting: every Special Condition on the
+/// defender adds damage, so Poison plus Burn adds twice.
+fn extra_damage_per_defender_special_condition(
+    state: &State,
+    base_damage: u32,
+    damage_per_condition: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let conditions = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .map_or(0, |defender| {
+            u32::from(defender.is_poisoned())
+                + u32::from(defender.is_burned())
+                + u32::from(defender.is_asleep())
+                + u32::from(defender.is_paralyzed())
+                + u32::from(defender.is_confused())
+        });
+    active_damage_doutcome(base_damage + conditions * damage_per_condition)
+}
+
+/// Magmortar - Thundering Volcano: the splash onto the opponent's bench only
+/// happens while the named Pokemon sits on the attacker's own bench.
+fn also_bench_damage_if_pokemon_on_bench(
+    state: &State,
+    active_damage: u32,
+    pokemon_name: &str,
+    bench_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let has_ally = state
+        .enumerate_bench_pokemon(state.current_player)
+        .any(|(_, pokemon)| pokemon.get_name() == pokemon_name);
+    let mut targets: Vec<(u32, bool, usize)> = if has_ally {
+        state
+            .enumerate_bench_pokemon(opponent)
+            .map(|(idx, _)| (bench_damage, true, idx))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    targets.push((active_damage, true, 0));
+    damage_effect_doutcome(targets, |_, _, _| {})
+}
+
+/// Volcarona - Volcanic Ash: pay a fixed number of Energy of one type, then put
+/// the damage on any one of the opponent's Pokemon.
+fn self_discard_type_energy_and_damage_any_opponent_pokemon(
+    energy_type: EnergyType,
+    count: usize,
+    damage: u32,
+) -> AttackOutcomes {
+    active_damage_effect_doutcome(0, move |_, state, action| {
+        let available = state
+            .get_active(action.actor)
+            .attached_energy
+            .iter()
+            .filter(|e| **e == energy_type)
+            .count();
+        let to_discard = vec![energy_type; count.min(available)];
+        state.discard_from_active(action.actor, &to_discard);
+
+        let opponent = (action.actor + 1) % 2;
+        let choices: Vec<SimpleAction> = state
+            .enumerate_in_play_pokemon(opponent)
+            .map(|(in_play_idx, _)| SimpleAction::ApplyDamage {
+                attacking_ref: (action.actor, 0),
+                targets: vec![(damage, opponent, in_play_idx)],
+                is_from_active_attack: true,
+            })
+            .collect();
+        if !choices.is_empty() {
+            state.move_generation_stack.push((action.actor, choices));
+        }
+    })
+}
+
+/// Druddigon - Giga Claw: two coins; both tails and the attack does nothing.
+fn nothing_if_both_tails(damage: u32) -> AttackOutcomes {
+    AttackOutcomes::binomial_by_heads(2, move |heads| {
+        active_damage_outcome(if heads == 0 { 0 } else { damage })
+    })
+}
+
+fn extra_damage_if_defender_burned(
+    state: &State,
+    base_damage: u32,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let burned = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .is_some_and(|defender| defender.is_burned());
+    active_damage_doutcome(base_damage + if burned { extra_damage } else { 0 })
 }
 
 fn extra_damage_if_defender_confused(

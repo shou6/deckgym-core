@@ -125,7 +125,14 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             energies: vec![EnergyType::Fire, EnergyType::Fire],
         },
     );
-    // map.insert("Discard 2 [R] Energy from this Pokémon. This attack does 80 damage to 1 of your opponent's Pokémon.", todo_implementation);
+    map.insert(
+        "Discard 2 [R] Energy from this Pokémon. This attack does 80 damage to 1 of your opponent's Pokémon.",
+        Mechanic::SelfDiscardTypeEnergyAndDamageAnyOpponentPokemon {
+            energy_type: EnergyType::Fire,
+            count: 2,
+            damage: 80,
+        },
+    );
     map.insert(
         "Discard 2 cards from your hand. If you can't discard 2 cards, this attack does nothing.",
         Mechanic::DiscardHandCards { count: 2 },
@@ -231,7 +238,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "Discard the top 3 cards of your opponent's deck.",
         Mechanic::DamageAndDiscardOpponentDeck { discard_count: 3 },
     );
-    // map.insert("Discard the top 5 cards of each player's deck.", todo_implementation);
+    map.insert(
+        "Discard the top 5 cards of each player's deck.",
+        Mechanic::DamageAndDiscardBothDecks { discard_count: 5 },
+    );
     // map.insert("Discard the top card of your deck. If that card is a [F] Pokémon, this attack does 60 more damage.", todo_implementation);
     map.insert(
         "Discard the top card of your opponent's deck.",
@@ -523,7 +533,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         Mechanic::ExtraDamageIfBothHeads { extra_damage: 100 },
     );
     // map.insert("Flip 2 coins. If both of them are heads, your opponent's Active Pokémon is Knocked Out.", todo_implementation);
-    // map.insert("Flip 2 coins. If both of them are tails, this attack does nothing.", todo_implementation);
+    map.insert(
+        "Flip 2 coins. If both of them are tails, this attack does nothing.",
+        Mechanic::NothingIfBothTails,
+    );
     map.insert(
         "Flip 2 coins. This attack does 100 damage for each heads.",
         Mechanic::ExtraDamageForEachHeads {
@@ -1218,7 +1231,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "If your opponent's Active Pokémon has more remaining HP than this Pokémon, this attack does 50 more damage.",
         Mechanic::ExtraDamageIfOpponentHpMoreThanSelf { extra_damage: 50 },
     );
-    // map.insert("If your opponent's Active Pokémon is Burned, this attack does 60 more damage.", todo_implementation);
+    map.insert(
+        "If your opponent's Active Pokémon is Burned, this attack does 60 more damage.",
+        Mechanic::ExtraDamageIfDefenderBurned { extra_damage: 60 },
+    );
     map.insert(
         "If your opponent's Active Pokémon is Poisoned, this attack does 40 more damage.",
         Mechanic::ExtraDamageIfDefenderPoisoned { extra_damage: 40 },
@@ -1988,7 +2004,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             target_opponent: true,
         },
     );
-    // map.insert("Your opponent's Active Pokémon is now Poisoned and Burned.", todo_implementation);
+    map.insert(
+        "Your opponent's Active Pokémon is now Poisoned and Burned.",
+        Mechanic::InflictStatusConditions {
+            conditions: vec![StatusCondition::Poisoned, StatusCondition::Burned],
+            target_opponent: true,
+        },
+    );
     map.insert(
         "Your opponent's Active Pokémon is now Poisoned and Asleep.",
         Mechanic::InflictStatusConditions {
@@ -2417,7 +2439,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "Flip 3 coins. This attack also does 20 damage for each heads to each of your opponent's Benched Pokémon.",
         Mechanic::FlipCoinsBenchDamagePerHead { num_coins: 3, bench_damage_per_head: 20 },
     );
-    // map.insert("If Electivire is on your Bench, this attack also does 20 damage to each of your opponent's Benched Pokémon.", todo_implementation);
+    map.insert(
+        "If Electivire is on your Bench, this attack also does 20 damage to each of your opponent's Benched Pokémon.",
+        Mechanic::AlsoBenchDamageIfPokemonOnBench {
+            pokemon_name: "Electivire".to_string(),
+            bench_damage: 20,
+        },
+    );
     map.insert(
         "If Magmortar is on your Bench, this attack does 70 more damage.",
         Mechanic::ExtraDamageIfPokemonOnBench {
@@ -2876,6 +2904,12 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "Your opponent's Active Pokémon is now Poisoned and Paralyzed. Shuffle this Pokémon and all attached cards into your deck.",
         Mechanic::InflictStatusAndShuffleSelfIntoDeck {
             conditions: vec![StatusCondition::Poisoned, StatusCondition::Paralyzed],
+        },
+    );
+    map.insert(
+        "This attack does 50 more damage for each Special Condition affecting your opponent's Active Pokémon.",
+        Mechanic::ExtraDamagePerDefenderSpecialCondition {
+            damage_per_condition: 50,
         },
     );
     map

@@ -642,6 +642,11 @@ pub enum Mechanic {
     /// Coalossal's Mountain Crush: deal the attack's `fixed_damage`, then flip a coin until
     /// tails, discarding the top card of the opponent's deck for each heads.
     FlipUntilTailsDiscardOpponentDeck,
+    /// Ultra Necrozma ex - Shoegaze: discard the top `discard_count` cards of
+    /// *each* player's deck, the attacker's included.
+    DamageAndDiscardBothDecks {
+        discard_count: usize,
+    },
     /// Kabutops - Leech Life: heal the same amount of damage dealt.
     HealEqualToDamageDealt,
     MegaAmpharosExLightningLancer,
@@ -728,6 +733,31 @@ pub enum Mechanic {
         extra_damage: u32,
     },
     /// Hatterene – Mental Crush: extra damage if opponent's active is Confused.
+    /// Heatmor - Roasting Heat: extra damage when the defender is Burned.
+    ExtraDamageIfDefenderBurned {
+        extra_damage: u32,
+    },
+    /// Team Rocket's Magmar - Derisive Roasting: extra damage for every Special
+    /// Condition on the defender, so Poison and Burn together count twice.
+    ExtraDamagePerDefenderSpecialCondition {
+        damage_per_condition: u32,
+    },
+    /// Magmortar - Thundering Volcano: the bench splash only happens when the
+    /// named Pokemon is on the attacker's bench.
+    AlsoBenchDamageIfPokemonOnBench {
+        pokemon_name: String,
+        bench_damage: u32,
+    },
+    /// Volcarona - Volcanic Ash: discard `count` Energy of `energy_type` from the
+    /// attacker, then deal `damage` to any one of the opponent's Pokemon.
+    SelfDiscardTypeEnergyAndDamageAnyOpponentPokemon {
+        energy_type: EnergyType,
+        count: usize,
+        damage: u32,
+    },
+    /// Druddigon - Giga Claw: flip 2 coins; the attack does nothing if both are
+    /// tails.
+    NothingIfBothTails,
     ExtraDamageIfDefenderConfused {
         extra_damage: u32,
     },
