@@ -116,6 +116,8 @@ mod gouging_fire_test;
 mod grovyle_slicing_snipe_test;
 #[path = "pokemon/growlithe_puppy_pile_test.rs"]
 mod growlithe_puppy_pile_test;
+#[path = "pokemon/hariyama_pivot_throw_test.rs"]
+mod hariyama_pivot_throw_test;
 #[path = "pokemon/hatterene_test.rs"]
 mod hatterene_test;
 #[path = "pokemon/heracross_test.rs"]
