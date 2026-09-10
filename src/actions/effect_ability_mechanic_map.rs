@@ -426,7 +426,13 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "This Pokémon takes -10 damage from attacks.",
             AbilityMechanic::ReduceDamageFromAttacks { amount: 10 },
         );
-        // map.insert("This Pokémon takes -20 damage from attacks from [R] or [W] Pokémon.", todo_implementation);
+        map.insert(
+            "This Pokémon takes -20 damage from attacks from [R] or [W] Pokémon.",
+            AbilityMechanic::ReduceDamageFromAttacksByAttackerType {
+                amount: 20,
+                attacker_types: vec![EnergyType::Fire, EnergyType::Water],
+            },
+        );
         map.insert(
             "This Pokémon takes -20 damage from attacks.",
             AbilityMechanic::ReduceDamageFromAttacks { amount: 20 },

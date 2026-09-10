@@ -655,9 +655,15 @@ pub enum Mechanic {
         damage_per: u32,
     },
     CoinFlipShuffleRandomOpponentHandCardIntoDeck,
+    /// Tsareena - Kick Down: shuffle a random card from the opponent's hand
+    /// into their deck. No coin flip, so it always happens.
+    ShuffleRandomOpponentHandCardIntoDeck,
     /// Persian - Shadow Claw: flip a coin; if heads, discard a random card
     /// from the opponent's hand after dealing damage.
     CoinFlipDiscardRandomOpponentHandCard,
+    /// Shiftry - Nipping Cyclone: discard a random card from the opponent's
+    /// hand. No coin flip, so it always happens.
+    DiscardRandomOpponentHandCard,
     /// Krookodile - Poaching Fangs: flip 'num_coins' cions; for each heads, shuffle
     /// a random card from the opponent's hand into their deck.
     CoinFlipsShuffleOpponentHandCards {

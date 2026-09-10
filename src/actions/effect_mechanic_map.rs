@@ -200,7 +200,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
     );
     // map.insert("Discard a random Item card from your opponent's hand.", todo_implementation);
     // map.insert("Discard a random Pokémon Tool card from your opponent's hand.", todo_implementation);
-    // map.insert("Discard a random card from your opponent's hand.", todo_implementation);
+    map.insert(
+        "Discard a random card from your opponent's hand.",
+        Mechanic::DiscardRandomOpponentHandCard,
+    );
     // map.insert("Discard all Energy attached to this Pokémon. Your opponent's Active Pokémon is now Paralyzed.", todo_implementation);
     map.insert(
         "Discard all Energy from this Pokémon.",
@@ -1057,7 +1060,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "This attack does 40 damage for each Pokémon Tool attached to all of your Pokémon.",
         Mechanic::DamagePerOwnToolAttached { damage_per: 40 },
     );
-    // map.insert("If this Pokémon has any [W] Energy attached, this attack does 40 more damage.", todo_implementation);
+    map.insert(
+        "If this Pokémon has any [W] Energy attached, this attack does 40 more damage.",
+        Mechanic::ExtraDamageIfSelfHasTypeEnergy {
+            energy_type: EnergyType::Water,
+            extra_damage: 40,
+        },
+    );
     map.insert("If this Pokémon has at least 1 extra [W] Energy attached, this attack does 40 more damage.",
         Mechanic::ExtraDamageIfExtraEnergy {
             required_extra_energy: vec![EnergyType::Water],
@@ -1245,7 +1254,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "If your opponent's Active Pokémon is a Pokémon ex, this attack does 80 more damage.",
         Mechanic::ExtraDamageIfEx { extra_damage: 80 },
     );
-    // map.insert("If your opponent's Active Pokémon is a [D] Pokémon, this attack does 30 more damage.", todo_implementation);
+    map.insert(
+        "If your opponent's Active Pokémon is a [D] Pokémon, this attack does 30 more damage.",
+        Mechanic::ExtraDamageIfDefenderType {
+            energy_type: EnergyType::Darkness,
+            extra_damage: 30,
+        },
+    );
     map.insert(
         "If your opponent's Active Pokémon is a [F] Pokémon, this attack does 30 more damage.",
         Mechanic::ExtraDamageIfDefenderType {
@@ -1267,7 +1282,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             extra_damage: 50,
         },
     );
-    // map.insert("If your opponent's Active Pokémon is a [M] Pokémon, this attack does 30 more damage.", todo_implementation);
+    map.insert(
+        "If your opponent's Active Pokémon is a [M] Pokémon, this attack does 30 more damage.",
+        Mechanic::ExtraDamageIfDefenderType {
+            energy_type: EnergyType::Metal,
+            extra_damage: 30,
+        },
+    );
     map.insert(
         "If your opponent's Active Pokémon is affected by a Special Condition, this attack does 60 more damage.",
         Mechanic::ExtraDamageIfOpponentHasSpecialCondition { extra_damage: 60 },
@@ -1742,7 +1763,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             damage_per_energy: 20,
         },
     );
-    // map.insert("This attack does 20 more damage for each [G] Energy attached to this Pokémon.", todo_implementation);
+    map.insert(
+        "This attack does 20 more damage for each [G] Energy attached to this Pokémon.",
+        Mechanic::ExtraDamagePerSpecificEnergy {
+            energy_type: EnergyType::Grass,
+            damage_per_energy: 20,
+        },
+    );
     map.insert(
         "This attack does 20 more damage for each [P] Energy attached to all of your Pokémon.",
         Mechanic::ExtraDamagePerSpecificEnergyAllYours {
@@ -1927,7 +1954,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             duration: 1,
         },
     );
-    // map.insert("Your opponent reveals a random card from their hand and shuffles it into their deck.", todo_implementation);
+    map.insert(
+        "Your opponent reveals a random card from their hand and shuffles it into their deck.",
+        Mechanic::ShuffleRandomOpponentHandCardIntoDeck,
+    );
     // map.insert("Your opponent reveals their hand.", todo_implementation);
     map.insert(
         "Your opponent reveals their hand. Choose a Supporter card you find there and discard it.",
@@ -2575,7 +2605,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             extra_damage: 50,
         },
     );
-    // map.insert("If this Pokémon has any [F] Energy attached, this attack does 60 more damage.", todo_implementation);
+    map.insert(
+        "If this Pokémon has any [F] Energy attached, this attack does 60 more damage.",
+        Mechanic::ExtraDamageIfSelfHasTypeEnergy {
+            energy_type: EnergyType::Fighting,
+            extra_damage: 60,
+        },
+    );
     map.insert(
         "If this Pokémon has at least 1 extra [F] Energy attached, this attack does 50 more damage.",
         Mechanic::ExtraDamageIfExtraEnergy {

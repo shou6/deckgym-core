@@ -971,8 +971,14 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::CoinFlipShuffleRandomOpponentHandCardIntoDeck => {
             coin_flip_shuffle_random_opponent_hand_card_into_deck()
         }
+        Mechanic::ShuffleRandomOpponentHandCardIntoDeck => {
+            shuffle_random_opponent_hand_card_into_deck(attack.fixed_damage)
+        }
         Mechanic::CoinFlipDiscardRandomOpponentHandCard => {
             coin_flip_discard_random_opponent_hand_card(attack.fixed_damage)
+        }
+        Mechanic::DiscardRandomOpponentHandCard => {
+            discard_random_opponent_hand_card(attack.fixed_damage)
         }
         Mechanic::CoinFlipsShuffleOpponentHandCards { num_coins } => {
             coin_flips_shuffle_opponent_hand_cards(attack.fixed_damage, *num_coins)
@@ -3809,6 +3815,37 @@ fn coin_flip_shuffle_random_opponent_hand_card_into_deck() -> AttackOutcomes {
         // Tails: do nothing
         active_damage_outcome(0),
     )
+}
+
+fn shuffle_random_opponent_hand_card_into_deck(damage: u32) -> AttackOutcomes {
+    AttackOutcomes::single(active_damage_effect_outcome(
+        damage,
+        move |rng, state, action| {
+            let opponent = (action.actor + 1) % 2;
+            if state.hands[opponent].is_empty() {
+                return;
+            }
+            let idx = rng.gen_range(0..state.hands[opponent].len());
+            let card = state.hands[opponent].remove(idx);
+            state.decks[opponent].cards.push(card);
+            state.decks[opponent].shuffle(false, rng);
+        },
+    ))
+}
+
+fn discard_random_opponent_hand_card(damage: u32) -> AttackOutcomes {
+    AttackOutcomes::single(active_damage_effect_outcome(
+        damage,
+        move |rng, state, action| {
+            let opponent = (action.actor + 1) % 2;
+            if state.hands[opponent].is_empty() {
+                return;
+            }
+            let idx = rng.gen_range(0..state.hands[opponent].len());
+            let card = state.hands[opponent].remove(idx);
+            state.discard_piles[opponent].push(card);
+        },
+    ))
 }
 
 fn coin_flip_discard_random_opponent_hand_card(damage: u32) -> AttackOutcomes {
