@@ -194,6 +194,8 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::IncreaseAttackCostForOpponentActive { .. } => false,
         AbilityMechanic::IncreaseRetreatCostForOpponentActive { .. } => false,
         AbilityMechanic::PreventDamageWhileBenched => false,
+        AbilityMechanic::NoRetreatOnYourFirstTurn => false,
+        AbilityMechanic::NoRetreatForYourActive => false,
         AbilityMechanic::IncreaseHpOfYourTypedPokemon { .. } => false,
         AbilityMechanic::IncreaseHpPerAttachedEnergy { .. } => false,
         AbilityMechanic::HealSelfOnZoneAttach { .. } => false,

@@ -103,7 +103,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "During Pokémon Checkup, if this Pokémon is in the Active Spot, do 10 damage to your opponent's Active Pokémon.",
             AbilityMechanic::CheckupDamageToOpponentActive { amount: 10 },
         );
-        // map.insert("During your first turn, this Pokémon has no Retreat Cost.", todo_implementation);
+        map.insert(
+            "During your first turn, this Pokémon has no Retreat Cost.",
+            AbilityMechanic::NoRetreatOnYourFirstTurn,
+        );
         map.insert(
             "Each [G] Energy attached to your [G] Pokémon provides 2 [G] Energy. This effect doesn't stack.",
             AbilityMechanic::DoubleGrassEnergy,
@@ -480,7 +483,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             AbilityMechanic::DiscardFromHandToDrawCard,
         );
         // map.insert("Your Active Dondozo has no Retreat Cost.", todo_implementation);
-        // map.insert("Your Active Pokémon has no Retreat Cost.", todo_implementation);
+        map.insert(
+            "Your Active Pokémon has no Retreat Cost.",
+            AbilityMechanic::NoRetreatForYourActive,
+        );
         map.insert(
             "Your opponent can't play any Pokémon from their hand to evolve their Active Pokémon.",
             AbilityMechanic::PreventOpponentActiveEvolution,

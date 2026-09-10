@@ -219,6 +219,11 @@ pub enum AbilityMechanic {
         amount: u32,
     },
     NoRetreatIfHasEnergy,
+    /// Wimpod - Wimp Out: "During your first turn, this Pokémon has no Retreat Cost."
+    NoRetreatOnYourFirstTurn,
+    /// Jumpluff - Fluffy Flight: "Your Active Pokémon has no Retreat Cost."
+    /// A board-wide passive: it works from the Bench, for its owner's Active.
+    NoRetreatForYourActive,
     PreventAllDamageFromEx,
     SleepOnZoneAttachToSelfWhileActive,
     IncreasePoisonDamage {

@@ -44,6 +44,23 @@ pub(crate) fn get_retreat_cost_for(
         {
             return vec![];
         }
+        // Wimpod - Wimp Out: free only while it is still its owner's first turn.
+        if matches!(
+            get_ability_mechanic(&card.card),
+            Some(AbilityMechanic::NoRetreatOnYourFirstTurn)
+        ) && state.is_users_first_turn()
+        {
+            return vec![];
+        }
+        // Jumpluff - Fluffy Flight frees its owner's Active from anywhere in play.
+        if state.enumerate_in_play_pokemon(owner).any(|(_, pokemon)| {
+            matches!(
+                get_ability_mechanic(&pokemon.card),
+                Some(AbilityMechanic::NoRetreatForYourActive)
+            )
+        }) {
+            return vec![];
+        }
         let mut normal_cost = pokemon_card.retreat_cost.clone();
         let retreat_cost_increase: u8 = card
             .get_effective_card_effects()

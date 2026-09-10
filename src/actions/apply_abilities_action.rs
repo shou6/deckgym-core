@@ -299,6 +299,12 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::PreventDamageWhileBenched => {
             panic!("PreventDamageWhileBenched is a passive ability")
         }
+        AbilityMechanic::NoRetreatOnYourFirstTurn => {
+            panic!("NoRetreatOnYourFirstTurn is a passive ability")
+        }
+        AbilityMechanic::NoRetreatForYourActive => {
+            panic!("NoRetreatForYourActive is a passive ability")
+        }
         AbilityMechanic::IncreaseHpOfYourTypedPokemon { .. } => {
             panic!("IncreaseHpOfYourTypedPokemon is a passive ability")
         }
