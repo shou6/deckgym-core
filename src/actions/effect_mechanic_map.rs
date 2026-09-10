@@ -2342,7 +2342,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         Mechanic::ExtraDamageIfSupportPlayedThisTurn { extra_damage: 60 },
     );
     // map.insert("If your Pokémon in play have 3 or more different types of Energy attached, this attack does 60 more damage.", todo_implementation);
-    // map.insert("If your opponent's Active Pokémon is a [G] or [M] Pokémon, this attack does 40 more damage.", todo_implementation);
+    map.insert(
+        "If your opponent's Active Pokémon is a [G] or [M] Pokémon, this attack does 40 more damage.",
+        Mechanic::ExtraDamageIfDefenderAnyType {
+            energy_types: vec![EnergyType::Grass, EnergyType::Metal],
+            extra_damage: 40,
+        },
+    );
     map.insert(
         "Take a [M] Energy from your Energy Zone and attach it to 1 of your Benched Pokémon.",
         Mechanic::ChargeBench {
@@ -2848,6 +2854,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             card_name: "Volbeat".to_string(),
             extra_damage: 60,
         },
+    );
+    map.insert(
+        "This attack does damage to your opponent's Active Pokémon equal to this Pokémon's remaining HP.",
+        Mechanic::DamageEqualToSelfRemainingHp,
     );
     map
 });

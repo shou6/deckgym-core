@@ -385,6 +385,15 @@ pub enum Mechanic {
         points: u8,
         extra_damage: u32,
     },
+    /// Scovillain - Red-Hot Headbutt: extra damage when the defender is any of
+    /// `energy_types`. The single-type form is `ExtraDamageIfDefenderType`.
+    ExtraDamageIfDefenderAnyType {
+        energy_types: Vec<EnergyType>,
+        extra_damage: u32,
+    },
+    /// Teal Mask Ogerpon - Ogre's Whip: damage equal to this Pokemon's own
+    /// remaining HP.
+    DamageEqualToSelfRemainingHp,
     DamageUnaffectedByWeakness,
     /// Sawk's Brick Break: fixed damage whose value "isn't affected by any effects on your
     /// opponent's Active Pokémon." The bypass itself is handled in `hooks::modify_damage` and the

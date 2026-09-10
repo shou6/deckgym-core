@@ -1002,6 +1002,7 @@ fn koga_effect(_: &mut StdRng, state: &mut State, action: &Action) {
     // Energy dissapears
     state.in_play_pokemon[action.actor][0] = None;
     state.refresh_double_grass_bonus_for_player(action.actor);
+    state.refresh_ally_hp_bonus_for_player(action.actor);
 
     // if no bench pokemon, finish game as a loss
     state.trigger_promotion_or_declare_winner(action.actor);

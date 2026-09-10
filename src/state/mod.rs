@@ -19,7 +19,7 @@ use crate::{
     tools::has_tool,
 };
 
-pub use played_card::{has_serperior_jungle_totem, PlayedCard};
+pub use played_card::{ally_hp_bonus_for, has_serperior_jungle_totem, PlayedCard};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameOutcome {
@@ -203,6 +203,21 @@ impl State {
     pub(crate) fn refresh_double_grass_bonus_all(&mut self) {
         self.refresh_double_grass_bonus_for_player(0);
         self.refresh_double_grass_bonus_for_player(1);
+    }
+
+    /// Keeps `player`'s Pokemon in sync with any board-wide HP ability they have
+    /// in play (Lilligant's Toughness Aroma). Must be called whenever `player`'s
+    /// board composition changes.
+    pub(crate) fn refresh_ally_hp_bonus_for_player(&mut self, player: usize) {
+        let bonus = ally_hp_bonus_for(self, player);
+        for pokemon in self.in_play_pokemon[player].iter_mut().flatten() {
+            pokemon.refresh_ally_hp_bonus(bonus);
+        }
+    }
+
+    pub(crate) fn refresh_ally_hp_bonus_all(&mut self) {
+        self.refresh_ally_hp_bonus_for_player(0);
+        self.refresh_ally_hp_bonus_for_player(1);
     }
 
     pub fn debug_string(&self) -> String {
@@ -728,6 +743,7 @@ impl State {
             self.in_play_pokemon[1][i] = Some(card);
         }
         self.refresh_double_grass_bonus_all();
+        self.refresh_ally_hp_bonus_all();
     }
 
     /// Set the flag indicating a Pokemon was KO'd by opponent's attack last turn.

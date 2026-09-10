@@ -272,6 +272,13 @@ pub enum AbilityMechanic {
         amount: u32,
     },
     PreventDamageWhileBenched,
+    /// Lilligant - Toughness Aroma: "Each of your [G] Pokémon gets +20 HP."
+    /// A board-wide passive: it applies while this Pokemon is anywhere in play,
+    /// to every one of its owner's Pokemon of `energy_type`.
+    IncreaseHpOfYourTypedPokemon {
+        energy_type: EnergyType,
+        amount: u32,
+    },
     IncreaseHpPerAttachedEnergy {
         energy_type: EnergyType,
         amount: u32,

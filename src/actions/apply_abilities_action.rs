@@ -299,6 +299,9 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::PreventDamageWhileBenched => {
             panic!("PreventDamageWhileBenched is a passive ability")
         }
+        AbilityMechanic::IncreaseHpOfYourTypedPokemon { .. } => {
+            panic!("IncreaseHpOfYourTypedPokemon is a passive ability")
+        }
         AbilityMechanic::IncreaseHpPerAttachedEnergy { .. } => {
             panic!("IncreaseHpPerAttachedEnergy is a passive ability")
         }

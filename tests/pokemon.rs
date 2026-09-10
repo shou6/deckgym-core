@@ -176,6 +176,8 @@ mod lanturn_ex_test;
 mod ledian_swift_test;
 #[path = "pokemon/legacy_ability_logic_test.rs"]
 mod legacy_ability_logic_test;
+#[path = "pokemon/lilligant_toughness_aroma_test.rs"]
+mod lilligant_toughness_aroma_test;
 #[path = "pokemon/lucario_b3_test.rs"]
 mod lucario_b3_test;
 #[path = "pokemon/lucario_fighting_coach_test.rs"]
@@ -284,6 +286,8 @@ mod salamence_test;
 mod sandslash_fury_swipes_test;
 #[path = "pokemon/sawk_test.rs"]
 mod sawk_test;
+#[path = "pokemon/scovillain_ogerpon_test.rs"]
+mod scovillain_ogerpon_test;
 #[path = "pokemon/shinx_hide_test.rs"]
 mod shinx_hide_test;
 #[path = "pokemon/silcoon_cascoon_cocoon_collector_test.rs"]

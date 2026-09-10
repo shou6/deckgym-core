@@ -910,6 +910,16 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::ExtraDamagePerOpponentPoint { damage_per_point } => {
             extra_damage_per_opponent_point_attack(state, attack.fixed_damage, *damage_per_point)
         }
+        Mechanic::ExtraDamageIfDefenderAnyType {
+            energy_types,
+            extra_damage,
+        } => extra_damage_if_defender_any_type(
+            state,
+            attack.fixed_damage,
+            energy_types,
+            *extra_damage,
+        ),
+        Mechanic::DamageEqualToSelfRemainingHp => damage_equal_to_self_remaining_hp(state),
         Mechanic::ExtraDamageIfPointsExactly {
             opponent,
             points,
@@ -3826,6 +3836,28 @@ fn coin_flip_shuffle_random_opponent_hand_card_into_deck() -> AttackOutcomes {
         // Tails: do nothing
         active_damage_outcome(0),
     )
+}
+
+fn extra_damage_if_defender_any_type(
+    state: &State,
+    base_damage: u32,
+    energy_types: &[EnergyType],
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let matches = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .and_then(|defender| defender.get_energy_type())
+        .is_some_and(|kind| energy_types.contains(&kind));
+    let bonus = if matches { extra_damage } else { 0 };
+    active_damage_doutcome(base_damage + bonus)
+}
+
+fn damage_equal_to_self_remaining_hp(state: &State) -> AttackOutcomes {
+    let damage = state.in_play_pokemon[state.current_player][0]
+        .as_ref()
+        .map_or(0, |attacker| attacker.get_remaining_hp());
+    active_damage_doutcome(damage)
 }
 
 fn extra_damage_if_points_exactly(

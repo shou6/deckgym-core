@@ -23,6 +23,10 @@ pub struct PlayedCard {
     damage_counters: u32,
     base_hp: u32,
     stadium_hp_bonus: u32,
+    /// HP granted by an ally's board-wide ability (Lilligant's Toughness Aroma).
+    /// Kept in sync via `State::refresh_ally_hp_bonus_for_player` whenever the
+    /// owner's board changes, since the granting Pokemon need not be Active.
+    ally_hp_bonus: u32,
     /// Whether Serperior's Jungle Totem ability is active for this Pokemon's owner
     /// (i.e. any of their Pokemon in play has it) and this Pokemon is [G] type, so its
     /// attached [G] Energy is doubled for effects like Serperior's own Regal Bloom.
@@ -61,6 +65,7 @@ impl PlayedCard {
             damage_counters,
             base_hp,
             stadium_hp_bonus: 0,
+            ally_hp_bonus: 0,
             double_grass_active: false,
             attached_energy,
             played_this_turn,
@@ -198,6 +203,13 @@ impl PlayedCard {
             jungle_totem_active_for_owner && self.card.get_type() == Some(EnergyType::Grass);
     }
 
+    pub(crate) fn refresh_ally_hp_bonus(&mut self, bonus_by_type: Option<(EnergyType, u32)>) {
+        self.ally_hp_bonus = match bonus_by_type {
+            Some((energy_type, amount)) if self.card.get_type() == Some(energy_type) => amount,
+            _ => 0,
+        };
+    }
+
     pub(crate) fn refresh_starting_plains_bonus(&mut self, starting_plains_active: bool) {
         let is_basic_pokemon = matches!(
             &self.card,
@@ -248,6 +260,7 @@ impl PlayedCard {
         }
 
         effective_hp += self.stadium_hp_bonus;
+        effective_hp += self.ally_hp_bonus;
 
         // E.g. Reuniclus Infinite Increase, Serperior Regal Bloom: +HP for each Energy of a type attached
         if let Some(AbilityMechanic::IncreaseHpPerAttachedEnergy {
@@ -438,6 +451,20 @@ impl fmt::Debug for PlayedCard {
             )
         }
     }
+}
+
+/// The board-wide HP bonus `player` currently grants their own Pokemon, if any
+/// (Lilligant's Toughness Aroma). Returns the type it applies to and the amount.
+pub fn ally_hp_bonus_for(state: &State, player: usize) -> Option<(EnergyType, u32)> {
+    state
+        .enumerate_in_play_pokemon(player)
+        .find_map(|(_, pokemon)| match get_ability_mechanic(&pokemon.card) {
+            Some(AbilityMechanic::IncreaseHpOfYourTypedPokemon {
+                energy_type,
+                amount,
+            }) => Some((*energy_type, *amount)),
+            _ => None,
+        })
 }
 
 pub fn has_serperior_jungle_totem(state: &State, player: usize) -> bool {
