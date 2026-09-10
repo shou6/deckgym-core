@@ -1143,6 +1143,19 @@ pub(crate) fn modify_damage(
         debug!("Safeguard: Preventing all damage from opponent's Pokémon ex");
         return 0;
     }
+    // Superb Shield (Aegislash): take less from the opponent's Pokémon ex.
+    let ex_reduction: u32 = if is_from_active_attack && attacking_pokemon.card.is_ex() {
+        target_effects
+            .iter()
+            .map(|e| match e {
+                CardEffect::ReducedDamageFromEx { amount } => *amount,
+                _ => 0,
+            })
+            .sum()
+    } else {
+        0
+    };
+
     // Shell Shield (Wartortle): prevent all damage while benched.
     if target_effects
         .iter()
@@ -1338,7 +1351,8 @@ pub(crate) fn modify_damage(
                 + metal_core_barrier_reduction
                 + steel_apron_reduction
                 + intimidating_fang_reduction
-                + ability_damage_reduction,
+                + ability_damage_reduction
+                + ex_reduction,
         );
     let final_damage = match weakness_application {
         WeaknessApplication::None => pre_weakness,

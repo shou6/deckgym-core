@@ -65,6 +65,12 @@ pub enum CardEffect {
     /// Prevent all damage done to this Pokémon by attacks from the opponent's Pokémon ex
     /// (e.g. Oricorio's Safeguard). Mirrors `PreventAllDamageFromEx`.
     PreventAllDamageFromEx,
+    /// Aegislash - Superb Shield: reduce damage done to this Pokémon by attacks
+    /// from the opponent's Pokémon ex. Unlike `PreventAllDamageFromEx` this only
+    /// takes `amount` off.
+    ReducedDamageFromEx {
+        amount: u32,
+    },
     /// Prevent all damage done to this Pokémon by attacks while it is on the Bench
     /// (e.g. Wartortle's Shell Shield). Mirrors `PreventDamageWhileBenched`.
     PreventDamageWhileBenched,

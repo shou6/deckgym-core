@@ -242,6 +242,8 @@ mod meganium_bloomshine_test;
 mod meowstic_test;
 #[path = "pokemon/meowth_carefree_steps_test.rs"]
 mod meowth_carefree_steps_test;
+#[path = "pokemon/metal_batch_test.rs"]
+mod metal_batch_test;
 #[path = "pokemon/milotic_ex_aqua_charge_test.rs"]
 mod milotic_ex_aqua_charge_test;
 #[path = "pokemon/miraidon_ex_test.rs"]

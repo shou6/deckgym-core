@@ -2130,7 +2130,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         },
     );
     // map.insert("During your opponent's next turn, if this Pokémon is in the Active Spot when your opponent's Active Pokémon retreats, this attack does 40 damage to the new Active Pokémon.", todo_implementation);
-    // map.insert("During your opponent's next turn, this Pokémon takes -80 damage from attacks from your opponent's Pokémon ex.", todo_implementation);
+    map.insert(
+        "During your opponent's next turn, this Pokémon takes -80 damage from attacks from your opponent's Pokémon ex.",
+        Mechanic::SelfReducedDamageFromEx {
+            amount: 80,
+            duration: 1,
+        },
+    );
     map.insert(
         "Flip 2 coins. If both of them are heads, this attack does 20 more damage.",
         Mechanic::ExtraDamageIfBothHeads { extra_damage: 20 },
@@ -2490,7 +2496,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             energies: vec![EnergyType::Water, EnergyType::Lightning],
         },
     );
-    // map.insert("This Pokémon also does 100 damage to itself and 50 damage to all Benched Pokémon (both yours and your opponent's).", todo_implementation);
+    map.insert(
+        "This Pokémon also does 100 damage to itself and 50 damage to all Benched Pokémon (both yours and your opponent's).",
+        Mechanic::SelfDamageAndAllBenchDamage {
+            self_damage: 100,
+            bench_damage: 50,
+        },
+    );
     map.insert(
         "This attack does 20 more damage for each Benched Pokémon (both yours and your opponent's).",
         Mechanic::BenchCountDamage {
@@ -2684,7 +2696,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "If you have any Stage 2 Pokémon on your Bench, this attack does 50 more damage.",
         Mechanic::ExtraDamageIfStage2OnBench { extra_damage: 50 },
     );
-    // map.insert("If your opponent has any [P] Pokémon in play, this attack does 50 more damage.", todo_implementation);
+    map.insert(
+        "If your opponent has any [P] Pokémon in play, this attack does 50 more damage.",
+        Mechanic::ExtraDamageIfOpponentHasTypeInPlay {
+            energy_type: EnergyType::Psychic,
+            extra_damage: 50,
+        },
+    );
     map.insert(
         "If your opponent's Active Pokémon is Asleep, this attack does 60 more damage.",
         Mechanic::ExtraDamageIfDefenderAsleep { extra_damage: 60 },
@@ -2910,6 +2928,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "This attack does 50 more damage for each Special Condition affecting your opponent's Active Pokémon.",
         Mechanic::ExtraDamagePerDefenderSpecialCondition {
             damage_per_condition: 50,
+        },
+    );
+    map.insert(
+        "During your opponent's next turn, attacks used by the Defending Pokémon cost 2 [C] more, and its Retreat Cost is 2 [C] more.",
+        Mechanic::RaiseDefenderAttackAndRetreatCost {
+            amount: 2,
+            duration: 1,
         },
     );
     map

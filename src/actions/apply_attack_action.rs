@@ -1071,6 +1071,30 @@ fn forecast_effect_attack_by_mechanic(
             self_discard_type_energy_and_damage_any_opponent_pokemon(*energy_type, *count, *damage)
         }
         Mechanic::NothingIfBothTails => nothing_if_both_tails(attack.fixed_damage),
+        Mechanic::ExtraDamageIfOpponentHasTypeInPlay {
+            energy_type,
+            extra_damage,
+        } => extra_damage_if_opponent_has_type_in_play(
+            state,
+            attack.fixed_damage,
+            *energy_type,
+            *extra_damage,
+        ),
+        Mechanic::SelfDamageAndAllBenchDamage {
+            self_damage,
+            bench_damage,
+        } => self_damage_and_all_bench_damage(
+            state,
+            attack.fixed_damage,
+            *self_damage,
+            *bench_damage,
+        ),
+        Mechanic::SelfReducedDamageFromEx { amount, duration } => {
+            self_reduced_damage_from_ex(attack.fixed_damage, *amount, *duration)
+        }
+        Mechanic::RaiseDefenderAttackAndRetreatCost { amount, duration } => {
+            raise_defender_attack_and_retreat_cost(attack.fixed_damage, *amount, *duration)
+        }
         Mechanic::ExtraDamageIfDefenderBurned { extra_damage } => {
             extra_damage_if_defender_burned(state, attack.fixed_damage, *extra_damage)
         }
@@ -4265,6 +4289,62 @@ fn self_discard_type_energy_and_damage_any_opponent_pokemon(
         if !choices.is_empty() {
             state.move_generation_stack.push((action.actor, choices));
         }
+    })
+}
+
+/// Bronzong - Psychic Resonance: the opponent only needs the type somewhere in
+/// play, so a Benched one counts.
+fn extra_damage_if_opponent_has_type_in_play(
+    state: &State,
+    base_damage: u32,
+    energy_type: EnergyType,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let has_type = state
+        .enumerate_in_play_pokemon(opponent)
+        .any(|(_, pokemon)| pokemon.get_energy_type() == Some(energy_type));
+    active_damage_doutcome(base_damage + if has_type { extra_damage } else { 0 })
+}
+
+/// Forretress - Enormous Explosion: the defender, the attacker and every Benched
+/// Pokemon on both sides take damage.
+fn self_damage_and_all_bench_damage(
+    state: &State,
+    active_damage: u32,
+    self_damage: u32,
+    bench_damage: u32,
+) -> AttackOutcomes {
+    let attacker = state.current_player;
+    let opponent = (attacker + 1) % 2;
+    let mut targets: Vec<(u32, bool, usize)> = vec![(active_damage, true, 0)];
+    targets.push((self_damage, false, 0));
+    for (idx, _) in state.enumerate_bench_pokemon(opponent) {
+        targets.push((bench_damage, true, idx));
+    }
+    for (idx, _) in state.enumerate_bench_pokemon(attacker) {
+        targets.push((bench_damage, false, idx));
+    }
+    damage_effect_doutcome(targets, |_, _, _| {})
+}
+
+/// Aegislash - Superb Shield: the shield goes on the attacker, not the defender.
+fn self_reduced_damage_from_ex(damage: u32, amount: u32, duration: u8) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        state
+            .get_active_mut(action.actor)
+            .add_effect(CardEffect::ReducedDamageFromEx { amount }, duration);
+    })
+}
+
+/// Team Rocket's Tinkaton - Pile-Driving Hammer: both costs go up for the
+/// opponent's next turn.
+fn raise_defender_attack_and_retreat_cost(damage: u32, amount: u8, duration: u8) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        let defender = state.get_active_mut(opponent);
+        defender.add_effect(CardEffect::IncreasedAttackCost { amount }, duration);
+        defender.add_effect(CardEffect::IncreasedRetreatCost { amount }, duration);
     })
 }
 

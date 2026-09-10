@@ -758,6 +758,30 @@ pub enum Mechanic {
     /// Druddigon - Giga Claw: flip 2 coins; the attack does nothing if both are
     /// tails.
     NothingIfBothTails,
+    /// Bronzong - Psychic Resonance: extra damage while the opponent has any
+    /// Pokemon of `energy_type` anywhere in play, Bench included.
+    ExtraDamageIfOpponentHasTypeInPlay {
+        energy_type: EnergyType,
+        extra_damage: u32,
+    },
+    /// Forretress - Enormous Explosion: damage to the defender, to the attacker
+    /// itself, and to every Benched Pokemon on both sides.
+    SelfDamageAndAllBenchDamage {
+        self_damage: u32,
+        bench_damage: u32,
+    },
+    /// Team Rocket's Tinkaton - Pile-Driving Hammer: raise both the defender's
+    /// attack cost and its Retreat Cost for the opponent's next turn.
+    RaiseDefenderAttackAndRetreatCost {
+        amount: u8,
+        duration: u8,
+    },
+    /// Aegislash - Superb Shield: put a damage reduction against Pokemon ex on
+    /// the attacker itself for the opponent's next turn.
+    SelfReducedDamageFromEx {
+        amount: u32,
+        duration: u8,
+    },
     ExtraDamageIfDefenderConfused {
         extra_damage: u32,
     },
