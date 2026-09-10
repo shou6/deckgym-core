@@ -2284,7 +2284,14 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         Mechanic::MayShuffleSelfIntoDeck,
     );
     // map.insert("Your opponent reveals a random card from their hand and shuffles it into their deck. Shuffle this Pokémon into your deck.", todo_implementation);
-    // map.insert("Your opponent's Active Pokémon is now Poisoned. During your opponent's next turn, that Pokémon can't retreat.", todo_implementation);
+    map.insert(
+        "Your opponent's Active Pokémon is now Poisoned. During your opponent's next turn, that Pokémon can't retreat.",
+        Mechanic::InflictStatusAndCardEffect {
+            conditions: vec![StatusCondition::Poisoned],
+            effect: CardEffect::NoRetreat,
+            effect_duration: 1,
+        },
+    );
 
     // New Mechanics from B2a
     map.insert(
@@ -2861,6 +2868,12 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
     map.insert(
         "This attack does damage to your opponent's Active Pokémon equal to this Pokémon's remaining HP.",
         Mechanic::DamageEqualToSelfRemainingHp,
+    );
+    map.insert(
+        "Your opponent's Active Pokémon is now Poisoned and Paralyzed. Shuffle this Pokémon and all attached cards into your deck.",
+        Mechanic::InflictStatusAndShuffleSelfIntoDeck {
+            conditions: vec![StatusCondition::Poisoned, StatusCondition::Paralyzed],
+        },
     );
     map
 });

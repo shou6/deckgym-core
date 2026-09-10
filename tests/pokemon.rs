@@ -1,5 +1,7 @@
 #[path = "pokemon/abomasnow_vigor_link_test.rs"]
 mod abomasnow_vigor_link_test;
+#[path = "pokemon/accelgor_deck_and_cover_test.rs"]
+mod accelgor_deck_and_cover_test;
 #[path = "pokemon/additional_ability_logic_test.rs"]
 mod additional_ability_logic_test;
 #[path = "pokemon/alcremie_test.rs"]
@@ -284,6 +286,8 @@ mod regidrago_draconic_slam_test;
 mod rhyperior_test;
 #[path = "pokemon/roaring_moon_test.rs"]
 mod roaring_moon_test;
+#[path = "pokemon/roserade_poison_ring_test.rs"]
+mod roserade_poison_ring_test;
 #[path = "pokemon/rotom_ex_junk_spark_test.rs"]
 mod rotom_ex_junk_spark_test;
 #[path = "pokemon/salamence_test.rs"]

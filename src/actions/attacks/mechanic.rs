@@ -73,6 +73,18 @@ pub enum Mechanic {
     /// Put a random Item card from your discard pile into your hand
     /// (Team Rocket's Slowpoke's Scavenge).
     RecoverItemFromDiscardPile,
+    /// Roserade - Poison Ring: inflict status conditions on the defender and put
+    /// a CardEffect on it for `effect_duration` turns.
+    InflictStatusAndCardEffect {
+        conditions: Vec<StatusCondition>,
+        effect: CardEffect,
+        effect_duration: u8,
+    },
+    /// Accelgor - Deck and Cover: inflict status conditions on the defender, then
+    /// shuffle the attacker back into its owner's deck. Not optional.
+    InflictStatusAndShuffleSelfIntoDeck {
+        conditions: Vec<StatusCondition>,
+    },
     InflictStatusConditions {
         conditions: Vec<StatusCondition>,
         target_opponent: bool,

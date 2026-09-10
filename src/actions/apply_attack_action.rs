@@ -315,6 +315,19 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::SearchToBenchBasic => {
             AttackOutcomes::from_effect_outcomes(search_and_bench_basic(state))
         }
+        Mechanic::InflictStatusAndShuffleSelfIntoDeck { conditions } => {
+            inflict_status_and_shuffle_self_into_deck(attack.fixed_damage, conditions.clone())
+        }
+        Mechanic::InflictStatusAndCardEffect {
+            conditions,
+            effect,
+            effect_duration,
+        } => inflict_status_and_card_effect(
+            attack.fixed_damage,
+            conditions.clone(),
+            effect.clone(),
+            *effect_duration,
+        ),
         Mechanic::InflictStatusConditions {
             conditions,
             target_opponent,
@@ -2424,6 +2437,48 @@ fn self_damage_attack(damage: u32, self_damage: u32) -> AttackOutcomes {
 }
 
 /// For attacks that deal damage and apply multiple status effects to opponent (e.g. Mega Venusaur Critical Bloom)
+/// Accelgor - Deck and Cover: damage and status conditions, then the attacker goes
+/// back into its owner's deck. Skipped when it did not survive its own attack.
+fn inflict_status_and_shuffle_self_into_deck(
+    damage: u32,
+    statuses: Vec<StatusCondition>,
+) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        for status in &statuses {
+            state.apply_status_condition(opponent, 0, *status);
+        }
+        let attacker_alive = state.in_play_pokemon[action.actor][0]
+            .as_ref()
+            .is_some_and(|p| !p.is_knocked_out());
+        if attacker_alive {
+            state.move_generation_stack.push((
+                action.actor,
+                vec![SimpleAction::ShuffleInPlayPokemonIntoDeck { in_play_idx: 0 }],
+            ));
+        }
+    })
+}
+
+/// Roserade - Poison Ring: damage, then status conditions and a CardEffect on the
+/// defender in one go.
+fn inflict_status_and_card_effect(
+    damage: u32,
+    statuses: Vec<StatusCondition>,
+    effect: CardEffect,
+    effect_duration: u8,
+) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        for status in &statuses {
+            state.apply_status_condition(opponent, 0, *status);
+        }
+        state
+            .get_active_mut(opponent)
+            .add_effect(effect.clone(), effect_duration);
+    })
+}
+
 fn damage_multiple_status_attack(
     statuses: Vec<StatusCondition>,
     attack: &Attack,
