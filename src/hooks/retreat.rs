@@ -21,6 +21,21 @@ pub(crate) fn can_retreat(state: &State) -> bool {
 }
 
 pub(crate) fn get_retreat_cost(state: &State, card: &PlayedCard) -> Vec<EnergyType> {
+    get_retreat_cost_for(state, state.current_player, card)
+}
+
+/// Retreat cost of `card`, which is in play on `owner`'s side.
+///
+/// Most callers ask about the player whose turn it is, but attacks such as Whimsicott ex's
+/// Grass Knot ("30 more damage for each Energy in your opponent's Active Pokémon's Retreat
+/// Cost") ask about the *opponent's* Active. Effects that belong to one side - the turn's
+/// X Speed, benched Shaymin, the opposing Ariados - have to be resolved against `owner`,
+/// not against whoever happens to be taking the turn.
+pub(crate) fn get_retreat_cost_for(
+    state: &State,
+    owner: usize,
+    card: &PlayedCard,
+) -> Vec<EnergyType> {
     if let Card::Pokemon(pokemon_card) = &card.card {
         if matches!(
             get_ability_mechanic(&card.card),
@@ -52,22 +67,26 @@ pub(crate) fn get_retreat_cost(state: &State, card: &PlayedCard) -> Vec<EnergyTy
         if has_tool(card, CardId::B3b064SmallBalloon) && pokemon_card.stage == 0 {
             normal_cost.pop();
         }
-        // Implement Retreat Cost Modifiers here
-        let mut to_subtract = state
-            .get_current_turn_effects()
-            .iter()
-            .filter(|x| matches!(x, TurnEffect::ReducedRetreatCost { .. }))
-            .map(|x| match x {
-                TurnEffect::ReducedRetreatCost { amount } => *amount,
-                _ => 0,
-            })
-            .sum::<u8>();
+        // Implement Retreat Cost Modifiers here.
+        // Turn effects (X Speed and friends) only apply to the player taking the turn.
+        let mut to_subtract = if owner == state.current_player {
+            state
+                .get_current_turn_effects()
+                .iter()
+                .filter(|x| matches!(x, TurnEffect::ReducedRetreatCost { .. }))
+                .map(|x| match x {
+                    TurnEffect::ReducedRetreatCost { amount } => *amount,
+                    _ => 0,
+                })
+                .sum::<u8>()
+        } else {
+            0
+        };
 
         // Shaymin's Sky Support: As long as this Pokémon is on your Bench, your Active Basic Pokémon's Retreat Cost is 1 less.
         if pokemon_card.stage == 0 {
             // Only affects Basic Pokemon
-            let current_player = state.current_player;
-            for (_idx, benched_pokemon) in state.enumerate_bench_pokemon(current_player) {
+            for (_idx, benched_pokemon) in state.enumerate_bench_pokemon(owner) {
                 if matches!(
                     get_ability_mechanic(&benched_pokemon.card),
                     Some(
@@ -79,8 +98,7 @@ pub(crate) fn get_retreat_cost(state: &State, card: &PlayedCard) -> Vec<EnergyTy
             }
         }
         if let Some(active_energy_type) = card.get_energy_type() {
-            let current_player = state.current_player;
-            for (_idx, benched_pokemon) in state.enumerate_bench_pokemon(current_player) {
+            for (_idx, benched_pokemon) in state.enumerate_bench_pokemon(owner) {
                 if let Some(AbilityMechanic::ReduceRetreatCostOfYourActiveTypedFromBench {
                     energy_type,
                     amount,
@@ -104,15 +122,15 @@ pub(crate) fn get_retreat_cost(state: &State, card: &PlayedCard) -> Vec<EnergyTy
         }
 
         // Ariados Trap Territory: Your opponent's Active Pokémon's Retreat Cost is 1 more.
-        // This check needs to look at if the OPPONENT has Ariados in play
-        let opponent = (state.current_player + 1) % 2;
-        for (_idx, pokemon) in state.enumerate_in_play_pokemon(opponent) {
+        // Look at the side facing `owner`, not the side facing whoever is taking the turn.
+        // Each copy is its own Ability, so two Ariados add 2.
+        let facing = (owner + 1) % 2;
+        for (_idx, pokemon) in state.enumerate_in_play_pokemon(facing) {
             if matches!(
                 get_ability_mechanic(&pokemon.card),
                 Some(AbilityMechanic::IncreaseRetreatCostForOpponentActive { amount: 1 })
             ) {
                 normal_cost.push(EnergyType::Colorless);
-                break;
             }
         }
 

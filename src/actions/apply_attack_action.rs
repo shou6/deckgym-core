@@ -21,7 +21,7 @@ use crate::{
     effects::{CardEffect, TurnEffect},
     hooks::{
         attack_effect_ignores_opponent_active_effects, can_evolve_into, contains_energy,
-        get_attack_cost, get_extra_random_spread_hits, get_retreat_cost, get_stage,
+        get_attack_cost, get_extra_random_spread_hits, get_retreat_cost_for, get_stage,
     },
     models::{Attack, Card, EnergyType, StatusCondition, TrainerType},
     tools::has_tool,
@@ -3304,7 +3304,9 @@ fn extra_damage_per_retreat_cost(
 ) -> AttackOutcomes {
     let opponent = (state.current_player + 1) % 2;
     let opponent_active = state.get_active(opponent);
-    let retreat_cost = get_retreat_cost(state, opponent_active);
+    // The Active being measured belongs to the opponent, so its own side's effects
+    // (their benched Shaymin, our Ariados) have to be resolved against them.
+    let retreat_cost = get_retreat_cost_for(state, opponent, opponent_active);
     let damage = base_damage + (retreat_cost.len() as u32) * damage_per_energy;
     active_damage_doutcome(damage)
 }
