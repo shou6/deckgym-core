@@ -2192,7 +2192,14 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         },
     );
     // map.insert("If you have fewer Pokémon in play than your opponent, this attack does 80 more damage.", todo_implementation);
-    // map.insert("If your opponent has gotten exactly 1 points, this attack does 40 more damage.", todo_implementation);
+    map.insert(
+        "If your opponent has gotten exactly 1 points, this attack does 40 more damage.",
+        Mechanic::ExtraDamageIfPointsExactly {
+            opponent: true,
+            points: 1,
+            extra_damage: 40,
+        },
+    );
     // map.insert("If your opponent's Active Pokémon has damage on it, this attack does 50 more damage.", todo_implementation);
     map.insert(
         "Put 3 random cards from among Tandemaus and Maushold from your deck onto your Bench.",
@@ -2256,7 +2263,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "This attack is used twice in a row. The second attack does 40 damage.(If the first attack Knocks Out your opponent's Active Pokémon, the second attack is used after your opponent chooses a new Active Pokémon.)",
         Mechanic::MegaKangaskhanExDoublePunchingFamily,
     );
-    // map.insert("This attack's damage isn't affected by Weakness or by any effects on your opponent's Active Pokémon.", todo_implementation);
+    map.insert(
+        "This attack's damage isn't affected by Weakness or by any effects on your opponent's Active Pokémon.",
+        Mechanic::DamageUnaffectedByWeakness,
+    );
     map.insert(
         "Until this Pokémon leaves the Active Spot, this Pokémon's Heat-Up Crunch attack does +30 damage. This effect stacks.",
         Mechanic::DamageAndCardEffect {
@@ -2822,6 +2832,21 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         Mechanic::DirectDamage {
             damage: 80,
             bench_only: false,
+        },
+    );
+    map.insert(
+        "If you haven't gotten any points, this attack does 60 more damage.",
+        Mechanic::ExtraDamageIfPointsExactly {
+            opponent: false,
+            points: 0,
+            extra_damage: 60,
+        },
+    );
+    map.insert(
+        "If Volbeat is in your discard pile, this attack does 60 more damage.",
+        Mechanic::ExtraDamageIfCardInDiscard {
+            card_name: "Volbeat".to_string(),
+            extra_damage: 60,
         },
     );
     map

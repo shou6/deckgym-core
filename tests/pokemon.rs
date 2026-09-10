@@ -172,6 +172,8 @@ mod krookodile_a3a_poaching_fangs_test;
 mod kubfu_training_test;
 #[path = "pokemon/lanturn_ex_test.rs"]
 mod lanturn_ex_test;
+#[path = "pokemon/ledian_swift_test.rs"]
+mod ledian_swift_test;
 #[path = "pokemon/legacy_ability_logic_test.rs"]
 mod legacy_ability_logic_test;
 #[path = "pokemon/lucario_b3_test.rs"]
@@ -242,6 +244,8 @@ mod passimian_ex_offload_pass_test;
 mod persian_test;
 #[path = "pokemon/pidgeot_twister_test.rs"]
 mod pidgeot_twister_test;
+#[path = "pokemon/points_and_discard_condition_test.rs"]
+mod points_and_discard_condition_test;
 #[path = "pokemon/politoed_raid_test.rs"]
 mod politoed_raid_test;
 #[path = "pokemon/poochyena_test.rs"]

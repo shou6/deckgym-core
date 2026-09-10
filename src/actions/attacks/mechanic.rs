@@ -378,6 +378,13 @@ pub enum Mechanic {
         card_name: String,
         extra_damage: u32,
     },
+    /// Buzzwole - Ground Beat / Pheromosa - Prelude: extra damage when a player's
+    /// point total is exactly `points`. `opponent` picks whose points to read.
+    ExtraDamageIfPointsExactly {
+        opponent: bool,
+        points: u8,
+        extra_damage: u32,
+    },
     DamageUnaffectedByWeakness,
     /// Sawk's Brick Break: fixed damage whose value "isn't affected by any effects on your
     /// opponent's Active Pokémon." The bypass itself is handled in `hooks::modify_damage` and the

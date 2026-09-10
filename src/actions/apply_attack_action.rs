@@ -910,6 +910,17 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::ExtraDamagePerOpponentPoint { damage_per_point } => {
             extra_damage_per_opponent_point_attack(state, attack.fixed_damage, *damage_per_point)
         }
+        Mechanic::ExtraDamageIfPointsExactly {
+            opponent,
+            points,
+            extra_damage,
+        } => extra_damage_if_points_exactly(
+            state,
+            attack.fixed_damage,
+            *opponent,
+            *points,
+            *extra_damage,
+        ),
         Mechanic::ExtraDamageIfCardInDiscard {
             card_name,
             extra_damage,
@@ -3817,6 +3828,26 @@ fn coin_flip_shuffle_random_opponent_hand_card_into_deck() -> AttackOutcomes {
     )
 }
 
+fn extra_damage_if_points_exactly(
+    state: &State,
+    base_damage: u32,
+    opponent: bool,
+    points: u8,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let side = if opponent {
+        (state.current_player + 1) % 2
+    } else {
+        state.current_player
+    };
+    let bonus = if state.points[side] == points {
+        extra_damage
+    } else {
+        0
+    };
+    active_damage_doutcome(base_damage + bonus)
+}
+
 fn shuffle_random_opponent_hand_card_into_deck(damage: u32) -> AttackOutcomes {
     AttackOutcomes::single(active_damage_effect_outcome(
         damage,
@@ -4616,15 +4647,11 @@ fn extra_damage_if_card_in_discard_attack(
     card_name: String,
     extra_damage: u32,
 ) -> AttackOutcomes {
+    // Illumise's Ire-Fly names a Pokemon (Volbeat), not a Trainer, so match on the
+    // card's name regardless of which kind of card it is.
     let has_card_in_discard = state.discard_piles[state.current_player]
         .iter()
-        .any(|card| {
-            if let crate::models::Card::Trainer(trainer) = card {
-                trainer.name == card_name
-            } else {
-                false
-            }
-        });
+        .any(|card| card.get_name() == card_name);
     let total_damage = if has_card_in_discard {
         base_damage + extra_damage
     } else {
