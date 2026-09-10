@@ -816,6 +816,7 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::DarknessClaw => darkness_claw_attack(state.current_player, attack.fixed_damage),
         Mechanic::BlockBasicAttack => block_basic_attack(attack.fixed_damage),
         Mechanic::SwitchSelfWithBench => switch_self_with_bench(state, attack.fixed_damage, false),
+        Mechanic::MayShuffleSelfIntoDeck => may_shuffle_self_into_deck(attack.fixed_damage),
         Mechanic::MaySwitchSelfWithBench => {
             switch_self_with_bench(state, attack.fixed_damage, true)
         }
@@ -4245,6 +4246,29 @@ fn random_spread_damage(
 
     let outcomes = enumerate_random_damage_outcomes(&possible_targets, times, damage_per_hit);
     random_damage_outcomes_to_outcomes(actor, outcomes)
+}
+
+/// Eldegoss - Float Up: after damage, offer to shuffle the attacker back into its
+/// owner's deck. Skipped when the attacker did not survive its own attack.
+fn may_shuffle_self_into_deck(damage: u32) -> AttackOutcomes {
+    AttackOutcomes::single(AttackOutcome::damage_then_effect(
+        vec![(damage, true, 0)],
+        move |_, state, action| {
+            let attacker_alive = state.in_play_pokemon[action.actor][0]
+                .as_ref()
+                .is_some_and(|p| !p.is_knocked_out());
+            if !attacker_alive {
+                return;
+            }
+            state.move_generation_stack.push((
+                action.actor,
+                vec![
+                    SimpleAction::ShuffleInPlayPokemonIntoDeck { in_play_idx: 0 },
+                    SimpleAction::Noop,
+                ],
+            ));
+        },
+    ))
 }
 
 fn switch_self_with_bench(state: &State, damage: u32, optional: bool) -> AttackOutcomes {

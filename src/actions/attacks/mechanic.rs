@@ -635,6 +635,9 @@ pub enum Mechanic {
     BlockBasicAttack,
     SwitchSelfWithBench,
     MaySwitchSelfWithBench,
+    /// Eldegoss - Float Up: "You may shuffle this Pokémon and all attached cards
+    /// into your deck." Optional, so the attacker is offered a decline too.
+    MayShuffleSelfIntoDeck,
     SelfHealIfStadiumInPlay {
         amount: u32,
     },

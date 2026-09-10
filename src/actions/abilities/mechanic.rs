@@ -93,6 +93,12 @@ pub enum AbilityMechanic {
     /// Abomasnow's Vigor Link: "If you have Arceus or Arceus ex in play, attacks used by this
     /// Pokémon cost `amount` less [C] Energy." Depends on the board, so it's resolved in
     /// `hooks::get_attack_cost` rather than being a plain `CardEffect`.
+    /// Cherubi - En-fruits-iastic: "If this Pokémon has a Pokémon Tool attached,
+    /// attacks used by this Pokémon cost 1 less [G] Energy."
+    ReduceAttackCostIfToolAttached {
+        energy_type: EnergyType,
+        amount: u8,
+    },
     ReduceAttackCostIfArceusInPlay {
         amount: u8,
     },

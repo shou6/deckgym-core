@@ -1448,8 +1448,41 @@ pub(crate) fn get_attack_cost(
 
     modified_cost = future_system_cost(modified_cost, state, attacking_player);
     modified_cost = vigor_link_cost(modified_cost, state, attacking_player);
+    modified_cost = tool_attached_cost(modified_cost, state, attacking_player);
 
     modified_cost
+}
+
+/// Cherubi's En-fruits-iastic: "If this Pokémon has a Pokémon Tool attached, attacks used by
+/// this Pokémon cost 1 less [G] Energy." Unlike the [C] reductions this removes an Energy of a
+/// named type, falling back to a Colorless one if the cost has no such Energy left.
+fn tool_attached_cost(mut cost: Vec<EnergyType>, state: &State, player: usize) -> Vec<EnergyType> {
+    let Some(active) = state.in_play_pokemon[player][0].as_ref() else {
+        return cost;
+    };
+    if active.attached_tool.is_none() {
+        return cost;
+    }
+    let Some(AbilityMechanic::ReduceAttackCostIfToolAttached {
+        energy_type,
+        amount,
+    }) = get_ability_mechanic(&active.card)
+    else {
+        return cost;
+    };
+    for _ in 0..*amount {
+        let position = cost
+            .iter()
+            .position(|e| e == energy_type)
+            .or_else(|| cost.iter().position(|e| *e == EnergyType::Colorless));
+        match position {
+            Some(pos) => {
+                cost.remove(pos);
+            }
+            None => break,
+        }
+    }
+    cost
 }
 
 /// Abomasnow's Vigor Link: "If you have Arceus or Arceus ex in play, attacks used by this

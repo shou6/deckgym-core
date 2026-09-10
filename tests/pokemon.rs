@@ -54,6 +54,8 @@ mod celebi_time_recall_test;
 mod chansey_blissey_test;
 #[path = "pokemon/charmeleon_ignition_test.rs"]
 mod charmeleon_ignition_test;
+#[path = "pokemon/cherubi_enfruitsiastic_test.rs"]
+mod cherubi_enfruitsiastic_test;
 #[path = "pokemon/coalossal_coal_drop_test.rs"]
 mod coalossal_coal_drop_test;
 #[path = "pokemon/coalossal_mountain_crush_test.rs"]
@@ -90,6 +92,8 @@ mod dustox_select_powder_test;
 mod dustox_variety_powder_test;
 #[path = "pokemon/eelektross_energy_crush_test.rs"]
 mod eelektross_energy_crush_test;
+#[path = "pokemon/eldegoss_float_up_test.rs"]
+mod eldegoss_float_up_test;
 #[path = "pokemon/emboar_flare_storm_test.rs"]
 mod emboar_flare_storm_test;
 #[path = "pokemon/emolga_dedenne_ex_tool_damage_test.rs"]

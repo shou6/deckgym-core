@@ -649,6 +649,7 @@ impl State {
         self.discard_energies[ko_receiver].extend(ko_pokemon.attached_energy.iter().cloned());
         self.in_play_pokemon[ko_receiver][ko_pokemon_idx] = None;
         self.refresh_double_grass_bonus_for_player(ko_receiver);
+        self.refresh_ally_hp_bonus_for_player(ko_receiver);
     }
 
     /// Removes the attached tool from a Pokémon and puts the tool card into the discard pile.

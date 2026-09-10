@@ -141,7 +141,13 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "If any damage is done to this Pokémon by attacks, flip a coin. If heads, this Pokémon takes -80 damage from that attack.",
             AbilityMechanic::CoinFlipToReduceDamage { amount: 80 },
         );
-        // map.insert("If this Pokémon has a Pokémon Tool attached, attacks used by this Pokémon cost 1 less [G] Energy.", todo_implementation);
+        map.insert(
+            "If this Pokémon has a Pokémon Tool attached, attacks used by this Pokémon cost 1 less [G] Energy.",
+            AbilityMechanic::ReduceAttackCostIfToolAttached {
+                energy_type: EnergyType::Grass,
+                amount: 1,
+            },
+        );
         map.insert(
             "If this Pokémon has any Energy attached, it has no Retreat Cost.",
             AbilityMechanic::NoRetreatIfHasEnergy,
