@@ -263,6 +263,25 @@ pub(crate) fn on_bench_from_hand(actor: usize, state: &mut State, card: &Card, b
                 ],
             ));
         }
+        Some(AbilityMechanic::HealYourTypedActiveOnBench { energy_type, .. }) => {
+            // Nothing to offer unless the Active is of that type and actually hurt.
+            let worth_it = state.maybe_get_active(actor).is_some_and(|active| {
+                active.get_energy_type() == Some(*energy_type) && active.is_damaged()
+            });
+            if !worth_it {
+                return;
+            }
+            debug!("Hospitality: offering to heal the Active");
+            state.move_generation_stack.push((
+                actor,
+                vec![
+                    SimpleAction::UseAbility {
+                        in_play_idx: bench_idx,
+                    },
+                    SimpleAction::Noop,
+                ],
+            ));
+        }
         Some(AbilityMechanic::AncientRoar) => {
             let opponent = (actor + 1) % 2;
             if state.enumerate_bench_pokemon(opponent).next().is_none() {

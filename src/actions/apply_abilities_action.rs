@@ -60,6 +60,9 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::SwitchDamagedOpponentBenchToActive => {
             Outcomes::single_fn(umbreon_dark_chase)
         }
+        AbilityMechanic::CoinFlipSwitchOpponentBenchToActive => {
+            coin_flip_switch_opponent_bench_to_active()
+        }
         AbilityMechanic::SwitchThisBenchWithActive => Outcomes::single(rising_road(in_play_idx)),
         AbilityMechanic::SwitchActiveTypedWithBench { .. } => {
             switch_active_typed_with_bench_outcome()
@@ -167,6 +170,12 @@ fn forecast_ability_by_mechanic(
         }
         AbilityMechanic::ElectromagneticWall => {
             panic!("ElectromagneticWall is a passive ability")
+        }
+        AbilityMechanic::HealYourTypedActiveOnBench { amount, .. } => {
+            let amount = *amount;
+            Outcomes::single_fn(move |_, state, action| {
+                state.get_active_mut(action.actor).heal(amount);
+            })
         }
         AbilityMechanic::InfiltratingInspection => {
             panic!("InfiltratingInspection is triggered when played to bench")
@@ -831,6 +840,27 @@ fn dismantling_keys(klefki_idx: usize) -> Outcomes {
             state.discard_from_play(action.actor, klefki_idx);
         }
     })
+}
+
+/// Rillaboom - Captivating Rhythm: on heads, the opponent's Active is replaced by
+/// one of their Benched Pokemon of the user's choosing.
+fn coin_flip_switch_opponent_bench_to_active() -> Outcomes {
+    Outcomes::binary_coin(
+        Box::new(|_, state, action| {
+            let opponent = (action.actor + 1) % 2;
+            let choices = state
+                .enumerate_bench_pokemon(opponent)
+                .map(|(in_play_idx, _)| SimpleAction::Activate {
+                    player: opponent,
+                    in_play_idx,
+                })
+                .collect::<Vec<_>>();
+            if !choices.is_empty() {
+                state.move_generation_stack.push((action.actor, choices));
+            }
+        }),
+        Box::new(|_, _, _| {}),
+    )
 }
 
 fn umbreon_dark_chase(_: &mut StdRng, state: &mut State, action: &Action) {

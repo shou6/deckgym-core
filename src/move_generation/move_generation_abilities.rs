@@ -71,6 +71,14 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::SwitchDamagedOpponentBenchToActive => {
             is_active && can_use_umbreon_dark_chase(state, card)
         }
+        // Works from the Bench too, and any Benched Pokemon can be dragged out.
+        AbilityMechanic::CoinFlipSwitchOpponentBenchToActive => {
+            !card.ability_used
+                && state
+                    .enumerate_bench_pokemon((state.current_player + 1) % 2)
+                    .next()
+                    .is_some()
+        }
         AbilityMechanic::SwitchThisBenchWithActive => !is_active && !card.ability_used,
         AbilityMechanic::SwitchActiveTypedWithBench { energy_type } => {
             can_use_switch_active_typed_with_bench(state, card, *energy_type)
@@ -127,6 +135,8 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::PreventFirstAttack => false,
         AbilityMechanic::ElectromagneticWall => false,
         AbilityMechanic::InfiltratingInspection => false,
+        // Triggered when played to the bench, not from the ordinary action list.
+        AbilityMechanic::HealYourTypedActiveOnBench { .. } => false,
         AbilityMechanic::DiscardTopCardOpponentDeck => {
             !card.ability_used && !state.decks[(state.current_player + 1) % 2].cards.is_empty()
         }

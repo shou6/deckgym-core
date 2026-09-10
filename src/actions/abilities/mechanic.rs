@@ -31,6 +31,10 @@ pub enum AbilityMechanic {
         amount: u32,
     },
     SwitchDamagedOpponentBenchToActive,
+    /// Rillaboom - Captivating Rhythm: "Once during your turn, you may flip a
+    /// coin. If heads, switch in 1 of your opponent's Benched Pokémon to the
+    /// Active Spot." Usable from the Bench, and any Benched Pokemon is a target.
+    CoinFlipSwitchOpponentBenchToActive,
     SwitchThisBenchWithActive,
     SwitchActiveTypedWithBench {
         energy_type: EnergyType,
@@ -134,6 +138,14 @@ pub enum AbilityMechanic {
     PreventFirstAttack,
     ElectromagneticWall,
     InfiltratingInspection,
+    /// Poltchageist - Hospitality: "Once during your turn, when you put this
+    /// Pokémon from your hand onto your Bench, you may heal 20 damage from your
+    /// Active [G] Pokémon." Offered only when the Active is of `energy_type` and
+    /// actually damaged.
+    HealYourTypedActiveOnBench {
+        energy_type: EnergyType,
+        amount: u32,
+    },
     DiscardTopCardOpponentDeck,
     CoinFlipToPreventDamage,
     /// Bastiodon's Guarded Grill / Hisuian Goodra's Securely Sheltered: if any damage is done to

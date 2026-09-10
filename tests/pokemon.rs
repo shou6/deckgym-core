@@ -258,6 +258,8 @@ mod pidgeot_twister_test;
 mod points_and_discard_condition_test;
 #[path = "pokemon/politoed_raid_test.rs"]
 mod politoed_raid_test;
+#[path = "pokemon/poltchageist_hospitality_test.rs"]
+mod poltchageist_hospitality_test;
 #[path = "pokemon/poochyena_test.rs"]
 mod poochyena_test;
 #[path = "pokemon/porygon2_buggy_evolution_test.rs"]
@@ -284,6 +286,8 @@ mod rampardos_head_smash_test;
 mod regidrago_draconic_slam_test;
 #[path = "pokemon/rhyperior_test.rs"]
 mod rhyperior_test;
+#[path = "pokemon/rillaboom_captivating_rhythm_test.rs"]
+mod rillaboom_captivating_rhythm_test;
 #[path = "pokemon/roaring_moon_test.rs"]
 mod roaring_moon_test;
 #[path = "pokemon/roserade_poison_ring_test.rs"]

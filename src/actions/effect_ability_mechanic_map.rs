@@ -299,7 +299,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Once during your turn, you may do 20 damage to 1 of your opponent's Pokémon.",
             AbilityMechanic::DamageOneOpponentPokemon { amount: 20 },
         );
-        // map.insert("Once during your turn, you may flip a coin. If heads, switch in 1 of your opponent's Benched Pokémon to the Active Spot.", todo_implementation);
+        map.insert(
+            "Once during your turn, you may flip a coin. If heads, switch in 1 of your opponent's Benched Pokémon to the Active Spot.",
+            AbilityMechanic::CoinFlipSwitchOpponentBenchToActive,
+        );
         map.insert("Once during your turn, you may flip a coin. If heads, your opponent's Active Pokémon is now Asleep.", AbilityMechanic::CoinFlipSleepOpponentActive);
         // map.insert("Once during your turn, you may flip a coin. If heads, your opponent's Active Pokémon is now Poisoned.", todo_implementation);
         map.insert(
@@ -612,6 +615,13 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
         map.insert(
             "During Pokémon Checkup, heal 10 damage from each of your Pokémon.",
             AbilityMechanic::HealAllYourPokemonDuringCheckup { amount: 10 },
+        );
+        map.insert(
+            "Once during your turn, when you put this Pokémon from your hand onto your Bench, you may heal 20 damage from your Active [G] Pokémon.",
+            AbilityMechanic::HealYourTypedActiveOnBench {
+                energy_type: EnergyType::Grass,
+                amount: 20,
+            },
         );
         map
     });
