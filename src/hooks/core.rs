@@ -129,6 +129,24 @@ pub(crate) fn on_evolve(
     }
 
     match get_ability_mechanic(to_card) {
+        Some(AbilityMechanic::RecoverSupporterFromDiscardOnEvolve) => {
+            state.move_generation_stack.push((
+                actor,
+                vec![
+                    SimpleAction::RecoverSupporterFromDiscard,
+                    SimpleAction::Noop,
+                ],
+            ));
+        }
+        Some(AbilityMechanic::TakeItemsFromTopOnEvolve { reveal }) => {
+            state.move_generation_stack.push((
+                actor,
+                vec![
+                    SimpleAction::TakeItemsFromTop { reveal: *reveal },
+                    SimpleAction::Noop,
+                ],
+            ));
+        }
         Some(AbilityMechanic::OpponentRedrawByRemainingPointsOnEvolve) => {
             state.move_generation_stack.push((
                 actor,

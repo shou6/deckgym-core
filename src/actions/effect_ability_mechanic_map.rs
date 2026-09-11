@@ -322,7 +322,14 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may put 2 random Pokémon Tool cards from your discard pile into your hand.",
             AbilityMechanic::RecoverToolsFromDiscardOnEvolve { count: 2 },
         );
-        // map.insert("Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may put a Supporter card from your discard pile into your hand.", todo_implementation);
+        map.insert(
+            "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may put a Supporter card from your discard pile into your hand.",
+            AbilityMechanic::RecoverSupporterFromDiscardOnEvolve,
+        );
+        map.insert(
+            "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may look at the top 4 cards of your deck and put all Item cards you find there into your hand. Shuffle the other cards back into your deck.",
+            AbilityMechanic::TakeItemsFromTopOnEvolve { reveal: 4 },
+        );
         map.insert(
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may take a [R] Energy from your Energy Zone and attach it to your Active [R] Pokémon.",
             AbilityMechanic::AttachEnergyFromZoneToActiveTypedOnEvolve {
@@ -347,6 +354,27 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
         map.insert(
             "Once during your turn, you may choose either player. Look at the top card of that player's deck.",
             AbilityMechanic::LookAtTopCard,
+        );
+        map.insert(
+            "Once during your turn, you may look at the top card of your deck.",
+            AbilityMechanic::LookAtTopCard,
+        );
+        map.insert(
+            "Once during your turn, you may look at a random card from your opponent's hand.",
+            AbilityMechanic::LookAtTopCard,
+        );
+        map.insert(
+            "This Pokémon takes -30 damage from attacks from [F] Pokémon.",
+            AbilityMechanic::ReduceDamageFromAttacksByAttackerType {
+                amount: 30,
+                attacker_types: vec![EnergyType::Fighting],
+            },
+        );
+        map.insert(
+            "This Pokémon can't be Asleep.",
+            AbilityMechanic::ImmuneToStatusCondition {
+                condition: StatusCondition::Asleep,
+            },
         );
         map.insert(
             "Once during your turn, you may discard the top card of your opponent's deck.",
@@ -404,12 +432,22 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
                 energy_type: EnergyType::Psychic,
             },
         );
-        // map.insert("Once during your turn, you may put a random Pokémon Tool card from your deck into your hand.", todo_implementation);
+        map.insert(
+            "Once during your turn, if this Pokémon is in the Active Spot, you may look at a random Supporter card from your opponent's hand. Use the effect of that card as the effect of this Ability.",
+            AbilityMechanic::CopyRandomOpponentSupporterIfActive,
+        );
+        map.insert(
+            "Once during your turn, you may put a random Pokémon Tool card from your deck into your hand.",
+            AbilityMechanic::SearchToHandTool,
+        );
         map.insert(
             "Once during your turn, you may put a random Pokémon from your deck into your hand.",
             AbilityMechanic::SearchRandomPokemonFromDeck,
         );
-        // map.insert("Once during your turn, you may switch out your opponent's Active Basic Pokémon to the Bench. (Your opponent chooses the new Active Pokémon.)", todo_implementation);
+        map.insert(
+            "Once during your turn, you may switch out your opponent's Active Basic Pokémon to the Bench. (Your opponent chooses the new Active Pokémon.)",
+            AbilityMechanic::SwitchOutOpponentActiveBasic,
+        );
         map.insert(
             "Once during your turn, if this Pokémon is in the Active Spot, you may switch out your opponent's Active Pokémon to the Bench. (Your opponent chooses the new Active Pokémon.)",
             AbilityMechanic::SwitchOutOpponentActiveToBench {
@@ -617,7 +655,6 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Once during your turn, you may heal 60 damage from 1 of your Pokémon ex that has any Energy attached. If you do, discard a random Energy from that Pokémon.",
             AbilityMechanic::HealOneYourPokemonExAndDiscardRandomEnergy { amount: 60 },
         );
-        // map.insert("Once during your turn, you may switch out your opponent's Active Basic Pokémon to the Bench. (Your opponent chooses the new Active Pokémon.)", todo_implementation);
         // map.insert("Once during your turn, you may switch out your opponent's Active Pokémon to the Bench. (Your opponent chooses the new Active Pokémon.)", todo_implementation);
         map.insert(
             "Once during your turn, you may take a [W] Energy from your Energy Zone and attach it to the [W] Pokémon in the Active Spot.",
@@ -665,7 +702,16 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "During Pokémon Checkup, if this Pokémon is in the Active Spot, do 10 damage to each of your opponent's Pokémon.",
             AbilityMechanic::CheckupDamageToAllOpponentPokemon { amount: 10 },
         );
-        // map.insert("If you don't have Regirock, Regice, and Registeel on your Bench, this Pokémon can't attack.", todo_implementation);
+        map.insert(
+            "If you don't have Regirock, Regice, and Registeel on your Bench, this Pokémon can't attack.",
+            AbilityMechanic::CannotAttackWithoutBenched {
+                pokemon_names: vec![
+                    "Regirock".to_string(),
+                    "Regice".to_string(),
+                    "Registeel".to_string(),
+                ],
+            },
+        );
         map.insert(
             "Once during your turn, after you flip any coins for an attack of 1 of your [R] Pokémon, you may ignore all results of those coin flips and begin flipping those coins again. You can't use more than 1 Victory Star Ability each turn.",
             AbilityMechanic::VictoryStarReflip,

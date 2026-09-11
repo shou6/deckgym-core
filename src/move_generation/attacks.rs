@@ -1,7 +1,7 @@
 use crate::{
     actions::{
-        abilities::AbilityMechanic, attacks::Mechanic, has_ability_mechanic, SimpleAction,
-        EFFECT_MECHANIC_MAP,
+        abilities::AbilityMechanic, attacks::Mechanic, get_ability_mechanic, has_ability_mechanic,
+        SimpleAction, EFFECT_MECHANIC_MAP,
     },
     effects::CardEffect,
     hooks::{contains_energy, get_attack_cost},
@@ -11,6 +11,21 @@ use crate::{
 
 pub(crate) fn generate_attack_actions(state: &State) -> Vec<SimpleAction> {
     let current_player = state.current_player;
+    // Regigigas's Seal of Antiquity: no attacks at all without its partners on the Bench.
+    if let Some(active) = state.in_play_pokemon[current_player][0].as_ref() {
+        if let Some(AbilityMechanic::CannotAttackWithoutBenched { pokemon_names }) =
+            get_ability_mechanic(&active.card)
+        {
+            let all_present = pokemon_names.iter().all(|name| {
+                state
+                    .enumerate_bench_pokemon(current_player)
+                    .any(|(_, pokemon)| pokemon.get_name() == *name)
+            });
+            if !all_present {
+                return vec![];
+            }
+        }
+    }
     let mut actions = Vec::new();
     if let Some(active_pokemon) = &state.in_play_pokemon[current_player][0] {
         // Fossil cards cannot attack

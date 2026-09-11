@@ -774,6 +774,166 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::ExtraDamageIfUndamaged { extra_damage } => {
             extra_damage_if_undamaged(state, attack.fixed_damage, *extra_damage)
         }
+        Mechanic::DamageAndCardEffects {
+            opponent,
+            effects,
+            duration,
+        } => {
+            let opponent = *opponent;
+            let effects = effects.clone();
+            let duration = *duration;
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                let player = if opponent {
+                    (action.actor + 1) % 2
+                } else {
+                    action.actor
+                };
+                for effect in &effects {
+                    state
+                        .get_active_mut(player)
+                        .add_effect(effect.clone(), duration);
+                }
+            })
+        }
+        Mechanic::ChooseOpponentHandCardToDeck => {
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                // `ShuffleOpponentSupporter` is named for Silver but works on any card in hand.
+                let choices: Vec<SimpleAction> = state.hands[opponent]
+                    .iter()
+                    .map(|card| SimpleAction::ShuffleOpponentSupporter {
+                        supporter_card: card.clone(),
+                    })
+                    .collect();
+                if !choices.is_empty() {
+                    state.move_generation_stack.push((action.actor, choices));
+                }
+            })
+        }
+        Mechanic::RepaintRandomDefenderEnergy { energy_types } => {
+            let energy_types = energy_types.clone();
+            active_damage_effect_doutcome(attack.fixed_damage, move |rng, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                let defender = state.get_active_mut(opponent);
+                if defender.attached_energy.is_empty() || energy_types.is_empty() {
+                    return;
+                }
+                let slot = rng.gen_range(0..defender.attached_energy.len());
+                defender.attached_energy[slot] = energy_types[rng.gen_range(0..energy_types.len())];
+            })
+        }
+        Mechanic::DiscardRandomDefenderEnergyIfEvolvedFrom {
+            pokemon_name,
+            count,
+        } => {
+            let evolved_now = state.in_play_pokemon[state.current_player][0]
+                .as_ref()
+                .is_some_and(|attacker| {
+                    attacker.played_this_turn
+                        && attacker.card.get_evolves_from().as_deref()
+                            == Some(pokemon_name.as_str())
+                });
+            let count = *count;
+            if !evolved_now {
+                active_damage_doutcome(attack.fixed_damage)
+            } else {
+                active_damage_effect_doutcome(attack.fixed_damage, move |rng, state, action| {
+                    let opponent = (action.actor + 1) % 2;
+                    for _ in 0..count {
+                        let defender = state.get_active_mut(opponent);
+                        if defender.attached_energy.is_empty() {
+                            break;
+                        }
+                        let slot = rng.gen_range(0..defender.attached_energy.len());
+                        let energy = defender.attached_energy.remove(slot);
+                        state.discard_energies[opponent].push(energy);
+                    }
+                })
+            }
+        }
+        Mechanic::MoveOwnEnergyFreely => {
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                let sources: Vec<(usize, Vec<EnergyType>)> = state
+                    .enumerate_in_play_pokemon(action.actor)
+                    .filter(|(_, pokemon)| !pokemon.attached_energy.is_empty())
+                    .map(|(idx, pokemon)| (idx, pokemon.attached_energy.clone()))
+                    .collect();
+                let targets: Vec<usize> = state
+                    .enumerate_in_play_pokemon(action.actor)
+                    .map(|(idx, _)| idx)
+                    .collect();
+                let mut choices = vec![SimpleAction::Noop];
+                for (from, energies) in &sources {
+                    let mut kinds: Vec<EnergyType> = energies.clone();
+                    kinds.sort_by_key(|energy| format!("{energy:?}"));
+                    kinds.dedup();
+                    for energy_type in kinds {
+                        for to in &targets {
+                            if to == from {
+                                continue;
+                            }
+                            choices.push(SimpleAction::MoveEnergy {
+                                from_in_play_idx: *from,
+                                to_in_play_idx: *to,
+                                energy_type,
+                                amount: 1,
+                            });
+                        }
+                    }
+                }
+                if choices.len() > 1 {
+                    state.move_generation_stack.push((action.actor, choices));
+                }
+            })
+        }
+        Mechanic::HalveDefenderRemainingHp => {
+            let opponent = (state.current_player + 1) % 2;
+            let remaining = state.get_active(opponent).get_remaining_hp();
+            active_damage_doutcome(remaining / 2)
+        }
+        Mechanic::CoinFlipReturnDefenderToHand => AttackOutcomes::binary_coin(
+            AttackOutcome::effect_only(move |_, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                state.move_generation_stack.push((
+                    opponent,
+                    vec![SimpleAction::ReturnPokemonToHand { in_play_idx: 0 }],
+                ));
+            }),
+            AttackOutcome::noop(),
+        ),
+        Mechanic::CoinPerNamedPokemonDamagePerHead {
+            pokemon_names,
+            damage_per_head,
+        } => {
+            let flips = state
+                .enumerate_in_play_pokemon(state.current_player)
+                .filter(|(_, pokemon)| pokemon_names.contains(&pokemon.get_name()))
+                .count();
+            let damage_per_head = *damage_per_head;
+            AttackOutcomes::binomial_by_heads(flips, move |heads| {
+                active_damage_outcome(heads as u32 * damage_per_head)
+            })
+        }
+        Mechanic::ExtraDamageIfDefenderIsEvolution { extra_damage } => {
+            let defender = state.get_active((state.current_player + 1) % 2);
+            if defender.card.is_basic() {
+                active_damage_doutcome(attack.fixed_damage)
+            } else {
+                active_damage_doutcome(attack.fixed_damage + *extra_damage)
+            }
+        }
+        Mechanic::DrawUntilHandMatchesOpponent => {
+            AttackOutcomes::single(AttackOutcome::effect_only(move |_, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                let target = state.hands[opponent].len();
+                while state.hands[action.actor].len() < target {
+                    match state.decks[action.actor].draw() {
+                        Some(card) => state.hands[action.actor].push(card),
+                        None => break,
+                    }
+                }
+            }))
+        }
         Mechanic::ExtraDamageIfDefenderIsBasic { extra_damage } => {
             extra_damage_if_defender_is_basic(state, attack.fixed_damage, *extra_damage)
         }

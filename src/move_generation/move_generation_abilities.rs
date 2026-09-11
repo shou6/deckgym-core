@@ -151,6 +151,15 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::CoinFlipSleepOpponentActive => !card.ability_used,
         AbilityMechanic::LookAtTopCard => !card.ability_used,
         AbilityMechanic::UnownDuo { .. } => false,
+        AbilityMechanic::CopyRandomOpponentSupporterIfActive => {
+            !card.ability_used && _in_play_index == 0
+        }
+        AbilityMechanic::SearchToHandTool => !card.ability_used,
+        AbilityMechanic::SwitchOutOpponentActiveBasic => !card.ability_used,
+        AbilityMechanic::RecoverSupporterFromDiscardOnEvolve => false,
+        AbilityMechanic::TakeItemsFromTopOnEvolve { .. } => false,
+        AbilityMechanic::CannotAttackWithoutBenched { .. } => false,
+        AbilityMechanic::ImmuneToStatusCondition { .. } => false,
         AbilityMechanic::CoinFlipPoisonOpponentActive => !card.ability_used,
         AbilityMechanic::GatherTypedEnergyToSelf { .. } => !card.ability_used,
         AbilityMechanic::CoinFlipDenyPointsOnKnockout => false,

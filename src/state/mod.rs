@@ -619,6 +619,15 @@ impl State {
             return;
         }
 
+        // Hoothoot's Insomnia: immune to one condition rather than all of them.
+        if has_ability_mechanic(
+            &pokemon.card,
+            &AbilityMechanic::ImmuneToStatusCondition { condition: status },
+        ) {
+            debug!("Insomnia: Pokémon is immune to {status:?}");
+            return;
+        }
+
         // Regice's Crystal Body: "Prevent all effects of attacks used by your opponent's Pokémon
         // done to this Pokémon." Special Conditions are what attacks put on a defender, so the
         // ability reads as immunity to them (damage is untouched).

@@ -580,6 +580,47 @@ pub enum Mechanic {
     ExtraDamageIfDefenderIsBasic {
         extra_damage: u32,
     },
+    /// Oranguru's Primate's Trap: like `DamageAndCardEffect`, but it leaves several effects.
+    DamageAndCardEffects {
+        opponent: bool,
+        effects: Vec<CardEffect>,
+        duration: u8,
+    },
+    /// Purugly's Interrupt: the attacker picks a card out of the opponent's hand and it goes back
+    /// into their deck.
+    ChooseOpponentHandCardToDeck,
+    /// Smeargle's Splatter Coating: one random Energy on the defender becomes one of
+    /// `energy_types`, drawn at random.
+    RepaintRandomDefenderEnergy {
+        energy_types: Vec<EnergyType>,
+    },
+    /// Dudunsparce's Sudden Drilling: the extra only lands if this Pokémon evolved from
+    /// `pokemon_name` this turn.
+    DiscardRandomDefenderEnergyIfEvolvedFrom {
+        pokemon_name: String,
+        count: usize,
+    },
+    /// Delcatty's Energy Blender: move any amount of Energy around your own side. Modeled as
+    /// moving one Energy at a time (the attacker may also decline), which covers the common use
+    /// without enumerating every redistribution.
+    MoveOwnEnergyFreely,
+    /// Bidoof's Super Fang: take half of what the defender has left, rounded down.
+    HalveDefenderRemainingHp,
+    /// Fan Rotom's Spin Storm: on heads the opponent's Active Pokémon (and everything on it) goes
+    /// back to their hand.
+    CoinFlipReturnDefenderToHand,
+    /// Maushold's Family Beatdown: one coin per Pokémon in play named in `pokemon_names`, and
+    /// `damage_per_head` for each heads.
+    CoinPerNamedPokemonDamagePerHead {
+        pokemon_names: Vec<String>,
+        damage_per_head: u32,
+    },
+    /// Kangaskhan's Cross-Cut: the other half of `ExtraDamageIfDefenderIsBasic`.
+    ExtraDamageIfDefenderIsEvolution {
+        extra_damage: u32,
+    },
+    /// Aipom's Imitate: draw until your hand matches the opponent's.
+    DrawUntilHandMatchesOpponent,
     /// Ludicolo's Rhythmic Steps and Luvdisc's Paired Tackle: extra damage when the attacker's
     /// own hand holds exactly one of `hand_sizes` cards.
     ExtraDamageIfHandSizeIs {

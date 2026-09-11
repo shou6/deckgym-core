@@ -303,6 +303,32 @@ pub enum AbilityMechanic {
     /// Unown's CHECK: "look at the top card of a deck" - information this engine already has, so
     /// using it does nothing. Modeled so the card is playable.
     LookAtTopCard,
+    /// Smeargle's Portrait: use the effect of a random Supporter card from the opponent's hand as
+    /// this Ability, while this Pokémon is Active.
+    CopyRandomOpponentSupporterIfActive,
+    /// Ambipom's Catching Tail: put a random Pokémon Tool card from your deck into your hand.
+    SearchToHandTool,
+    /// Swellow's Repelling Wind: switch the opponent's Active Basic Pokémon out; its owner picks
+    /// the replacement. Victreebel's Fragrance Trap is the "you choose" version.
+    SwitchOutOpponentActiveBasic,
+    /// Delcatty's Search for Friends: on evolving from hand, put a Supporter card from your
+    /// discard pile into your hand.
+    RecoverSupporterFromDiscardOnEvolve,
+    /// Raticate's Treasure Collecting: on evolving from hand, look at the top `reveal` cards and
+    /// take every Item among them.
+    TakeItemsFromTopOnEvolve {
+        reveal: usize,
+    },
+    /// Regigigas's Seal of Antiquity: this Pokémon cannot attack unless every Pokémon named in
+    /// `pokemon_names` is on your Bench.
+    CannotAttackWithoutBenched {
+        pokemon_names: Vec<String>,
+    },
+    /// Hoothoot's Insomnia: this Pokémon cannot be given `condition`. `ImmuneToStatusConditions`
+    /// is the all-conditions version.
+    ImmuneToStatusCondition {
+        condition: StatusCondition,
+    },
     /// Unown's GUARD and POWER: each works only alongside an Unown with a *different* Ability,
     /// which the card spells out by name. `own_ability_title` is this card's own Ability, so the
     /// check is "another Unown whose Ability is not this one".

@@ -38,6 +38,9 @@ mod bonsly_teary_attack_test;
 mod brambleghast_accept_pain_test;
 #[path = "pokemon/breloom_test.rs"]
 mod breloom_test;
+#[path = "pokemon/colorless_batch_test.rs"]
+mod colorless_batch_test;
+
 #[path = "pokemon/camerupt_eruption_test.rs"]
 mod camerupt_eruption_test;
 #[path = "pokemon/carbink_glittering_gift_test.rs"]

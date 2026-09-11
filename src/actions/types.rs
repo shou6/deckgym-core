@@ -203,6 +203,14 @@ pub enum SimpleAction {
     ApplyStatusesToOpponentActive {
         conditions: Vec<StatusCondition>,
     },
+    /// Delcatty's Search for Friends: put a Supporter card from your discard pile into your hand.
+    /// Which one is not modeled (they are all just cards), so the oldest is taken.
+    RecoverSupporterFromDiscard,
+    /// Raticate's Treasure Collecting: look at the top `reveal` cards, take every Item among them
+    /// and shuffle the rest back.
+    TakeItemsFromTop {
+        reveal: usize,
+    },
     /// Polteageist's Refreshing Tea: the opponent shuffles their hand into their deck and draws
     /// one card for each point they still need to win.
     OpponentRedrawByRemainingPoints,
@@ -393,6 +401,12 @@ impl fmt::Display for SimpleAction {
             }
             SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
                 write!(f, "DiscardToolsFromHandThenDamage({count}, {damage})")
+            }
+            SimpleAction::RecoverSupporterFromDiscard => {
+                write!(f, "RecoverSupporterFromDiscard")
+            }
+            SimpleAction::TakeItemsFromTop { reveal } => {
+                write!(f, "TakeItemsFromTop({reveal})")
             }
             SimpleAction::OpponentRedrawByRemainingPoints => {
                 write!(f, "OpponentRedrawByRemainingPoints")

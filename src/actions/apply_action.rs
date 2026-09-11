@@ -195,6 +195,8 @@ pub fn forecast_action(state: &State, action: &Action) -> Outcomes {
         | SimpleAction::MoveEnergiesFromActive { .. }
         | SimpleAction::RecoverToolsFromDiscard { .. }
         | SimpleAction::OpponentRedrawByRemainingPoints
+        | SimpleAction::RecoverSupporterFromDiscard
+        | SimpleAction::TakeItemsFromTop { .. }
         | SimpleAction::ReturnPokemonToHand { .. }
         | SimpleAction::ShuffleInPlayPokemonIntoDeck { .. }
         | SimpleAction::DiscardToolFromPokemon { .. }
@@ -481,6 +483,34 @@ fn apply_deterministic_action(state: &mut State, action: &Action) {
         } => apply_discard_own_benched_many_then_damage(action.actor, state, in_play_idxs, *damage),
         SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
             apply_discard_tools_from_hand_then_damage(action.actor, state, *count, *damage)
+        }
+        SimpleAction::RecoverSupporterFromDiscard => {
+            let found = state.discard_piles[action.actor].iter().position(|card| {
+                matches!(card, Card::Trainer(trainer)
+                    if trainer.trainer_card_type == crate::models::TrainerType::Supporter)
+            });
+            if let Some(idx) = found {
+                let card = state.discard_piles[action.actor].remove(idx);
+                state.hands[action.actor].push(card);
+            }
+        }
+        SimpleAction::TakeItemsFromTop { reveal } => {
+            let mut revealed = vec![];
+            for _ in 0..*reveal {
+                match state.decks[action.actor].draw() {
+                    Some(card) => revealed.push(card),
+                    None => break,
+                }
+            }
+            for card in revealed {
+                if matches!(&card, Card::Trainer(trainer)
+                    if trainer.trainer_card_type == crate::models::TrainerType::Item)
+                {
+                    state.hands[action.actor].push(card);
+                } else {
+                    state.decks[action.actor].cards.push(card);
+                }
+            }
         }
         SimpleAction::OpponentRedrawByRemainingPoints => {
             let opponent = (action.actor + 1) % 2;

@@ -236,6 +236,25 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::CoinFlipSleepOpponentActive => coin_flip_sleep_opponent_active(),
         AbilityMechanic::LookAtTopCard => Outcomes::single_fn(|_, _, _| {}),
         AbilityMechanic::UnownDuo { .. } => panic!("UnownDuo is a passive ability"),
+        AbilityMechanic::CopyRandomOpponentSupporterIfActive => {
+            copy_random_opponent_supporter(action.actor, state)
+        }
+        AbilityMechanic::SearchToHandTool => tool_search_outcomes(action.actor, state),
+        AbilityMechanic::SwitchOutOpponentActiveBasic => {
+            Outcomes::single_fn(switch_out_opponent_active_basic)
+        }
+        AbilityMechanic::RecoverSupporterFromDiscardOnEvolve => {
+            panic!("RecoverSupporterFromDiscardOnEvolve is triggered on evolve")
+        }
+        AbilityMechanic::TakeItemsFromTopOnEvolve { .. } => {
+            panic!("TakeItemsFromTopOnEvolve is triggered on evolve")
+        }
+        AbilityMechanic::CannotAttackWithoutBenched { .. } => {
+            panic!("CannotAttackWithoutBenched is a passive ability")
+        }
+        AbilityMechanic::ImmuneToStatusCondition { .. } => {
+            panic!("ImmuneToStatusCondition is a passive ability")
+        }
         AbilityMechanic::CoinFlipPoisonOpponentActive => coin_flip_poison_opponent_active(),
         AbilityMechanic::GatherTypedEnergyToSelf { energy_type } => {
             gather_typed_energy_to_self(*energy_type)
@@ -857,6 +876,96 @@ fn rising_road(index: usize) -> Mutation {
         }];
         state.move_generation_stack.push((action.actor, choices));
     })
+}
+
+/// Swellow's Repelling Wind: the opponent's Active Basic Pokemon goes to the Bench and they
+/// choose the replacement, so the choice is pushed for them rather than for the acting player.
+fn switch_out_opponent_active_basic(_: &mut StdRng, state: &mut State, action: &Action) {
+    let opponent = (action.actor + 1) % 2;
+    let active_is_basic = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .is_some_and(|pokemon| pokemon.card.is_basic());
+    if !active_is_basic {
+        return;
+    }
+    let possible_moves = state
+        .enumerate_bench_pokemon(opponent)
+        .map(|(in_play_idx, _)| SimpleAction::Activate {
+            player: opponent,
+            in_play_idx,
+        })
+        .collect::<Vec<_>>();
+    if possible_moves.is_empty() {
+        return;
+    }
+    state.move_generation_stack.push((opponent, possible_moves));
+}
+
+/// Smeargle's Portrait: one of the opponent's Supporter cards is picked at random and its effect
+/// runs for Smeargle's owner. The card stays in the opponent's hand - only its effect is borrowed.
+fn copy_random_opponent_supporter(acting_player: usize, state: &State) -> Outcomes {
+    let opponent = (acting_player + 1) % 2;
+    let supporters: Vec<crate::models::TrainerCard> = state.hands[opponent]
+        .iter()
+        .filter_map(|card| match card {
+            crate::models::Card::Trainer(trainer)
+                if trainer.trainer_card_type == crate::models::TrainerType::Supporter =>
+            {
+                Some(trainer.clone())
+            }
+            _ => None,
+        })
+        .collect();
+    if supporters.is_empty() {
+        return Outcomes::single_fn(|_, _, _| {});
+    }
+    // Each Supporter is equally likely; its own forecast decides what happens from there.
+    let probability = 1.0 / supporters.len() as f64;
+    let mut probabilities = vec![];
+    let mut mutations: crate::actions::apply_action_helpers::Mutations = vec![];
+    for supporter in supporters {
+        let borrowed = crate::actions::apply_trainer_action::forecast_trainer_action(
+            acting_player,
+            state,
+            &supporter,
+        );
+        let (inner_probabilities, inner_mutations) = borrowed.into_branches();
+        for (inner_probability, mutation) in inner_probabilities.into_iter().zip(inner_mutations) {
+            probabilities.push(probability * inner_probability);
+            mutations.push(mutation);
+        }
+    }
+    Outcomes::from_parts(probabilities, mutations)
+}
+
+/// Ambipom's Catching Tail: a random Pokemon Tool out of the deck.
+fn tool_search_outcomes(acting_player: usize, state: &State) -> Outcomes {
+    let tools: Vec<crate::models::Card> = state.decks[acting_player]
+        .cards
+        .iter()
+        .filter(|card| crate::tools::is_tool_card(card))
+        .cloned()
+        .collect();
+    if tools.is_empty() {
+        return Outcomes::single_fn(|_, _, _| {});
+    }
+    let probabilities = vec![1.0 / tools.len() as f64; tools.len()];
+    let mutations: crate::actions::apply_action_helpers::Mutations = tools
+        .into_iter()
+        .map(|tool| -> crate::actions::apply_action_helpers::Mutation {
+            Box::new(move |_, state, action| {
+                if let Some(idx) = state.decks[action.actor]
+                    .cards
+                    .iter()
+                    .position(|card| card == &tool)
+                {
+                    let card = state.decks[action.actor].cards.remove(idx);
+                    state.hands[action.actor].push(card);
+                }
+            })
+        })
+        .collect();
+    Outcomes::from_parts(probabilities, mutations)
 }
 
 fn victreebel_ability(_: &mut StdRng, state: &mut State, action: &Action) {
