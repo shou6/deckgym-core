@@ -12,7 +12,8 @@ use crate::{
     },
     effects::{CardEffect, TurnEffect},
     hooks::{
-        get_retreat_cost, on_bench_from_hand, on_evolve, to_playable_card, DamageModifierContext,
+        get_retreat_cost, on_bench_from_hand, on_evolve, on_retreat, to_playable_card,
+        DamageModifierContext,
     },
     models::{Card, EnergyType, StatusCondition},
     state::{PendingCoinReflip, State},
@@ -1048,6 +1049,11 @@ fn apply_retreat(player: usize, state: &mut State, bench_idx: usize, is_free: bo
     }
 
     apply_activate(player, state, bench_idx);
+
+    // A forced switch runs through here too (`is_free`), but the card says "retreats".
+    if !is_free {
+        on_retreat(state, player);
+    }
 }
 
 // We will replace the PlayedCard, but taking into account the attached energy

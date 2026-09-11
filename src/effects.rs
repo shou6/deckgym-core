@@ -40,6 +40,11 @@ pub enum CardEffect {
     /// Hala: if this Pokémon would be Knocked Out by damage from an attack, it survives with
     /// exactly 10 HP instead. Ursaluna's Guts is the coin-flip version.
     SurviveKnockOutAt10,
+    /// Galarian Stunfisk's Snapping Trap: while this Pokémon is in the Active Spot, the opponent
+    /// retreating puts `amount` damage on whichever Pokémon they retreat into.
+    DamageNewActiveOnOpponentRetreat {
+        amount: u32,
+    },
     PreventAllDamageAndEffects,
     /// Prevent all damage from attacks if the incoming damage is at most `threshold` (e.g. Cascoon's Harden).
     PreventDamageIfLessOrEqual {

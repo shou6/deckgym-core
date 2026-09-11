@@ -124,6 +124,9 @@ mod fire_status_and_heatran_test;
 mod flutter_mane_ex_test;
 #[path = "pokemon/flygon_ex_test.rs"]
 mod flygon_ex_test;
+#[path = "pokemon/galarian_stunfisk_test.rs"]
+mod galarian_stunfisk_test;
+
 #[path = "pokemon/gallade_test.rs"]
 mod gallade_test;
 #[path = "pokemon/gardevoir_psy_turbo_test.rs"]

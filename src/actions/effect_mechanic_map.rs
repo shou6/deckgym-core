@@ -2449,7 +2449,15 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             coin_flip: false,
         },
     );
-    // map.insert("During your opponent's next turn, if this Pokémon is in the Active Spot when your opponent's Active Pokémon retreats, this attack does 40 damage to the new Active Pokémon.", todo_implementation);
+    map.insert(
+        "During your opponent's next turn, if this Pokémon is in the Active Spot when your opponent's Active Pokémon retreats, this attack does 40 damage to the new Active Pokémon.",
+        Mechanic::DamageAndCardEffect {
+            opponent: false,
+            effect: CardEffect::DamageNewActiveOnOpponentRetreat { amount: 40 },
+            duration: 1,
+            coin_flip: false,
+        },
+    );
     map.insert(
         "During your opponent's next turn, this Pokémon takes -80 damage from attacks from your opponent's Pokémon ex.",
         Mechanic::SelfReducedDamageFromEx {

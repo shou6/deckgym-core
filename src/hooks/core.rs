@@ -1998,6 +1998,44 @@ fn apply_offload_pass(
         .push((knocked_out_player, choices));
 }
 
+/// Galarian Stunfisk's Snapping Trap: the opponent's Active Pokémon just retreated, so whatever
+/// they brought in takes the trap's damage - provided the Pokémon that set it is still Active.
+///
+/// Only a real retreat counts. A forced switch (Sabrina, Victreebel, a promotion after a
+/// knockout) goes through the same code path with `is_free`, and the card says "retreats", so the
+/// caller passes `false` for those.
+///
+/// The damage is dealt as attack damage (`is_from_active_attack`), because the card words it as
+/// "this attack does 40 damage": Weakness, damage modifiers and on-damage triggers all apply.
+pub(crate) fn on_retreat(state: &mut State, retreating_player: usize) {
+    let opponent = (retreating_player + 1) % 2;
+    let trap_damage = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .and_then(|active| {
+            active
+                .get_active_effects()
+                .iter()
+                .find_map(|effect| match effect {
+                    CardEffect::DamageNewActiveOnOpponentRetreat { amount } => Some(*amount),
+                    _ => None,
+                })
+        });
+    let Some(amount) = trap_damage else {
+        return;
+    };
+    if state.in_play_pokemon[retreating_player][0].is_none() {
+        return;
+    }
+    debug!("Snapping Trap: Dealing {amount} damage to the Pokemon that retreated in");
+    crate::actions::handle_damage(
+        state,
+        (opponent, 0),
+        &[(amount, retreating_player, 0)],
+        true,
+        Some("Snapping Trap"),
+    );
+}
+
 pub(crate) fn on_attack_knockout(
     state: &mut State,
     attacking_ref: (usize, usize),
