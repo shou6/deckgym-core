@@ -774,13 +774,13 @@ fn get_ability_damage_reduction(
         _ => 0,
     };
 
-    // Falinks's Iron Defense Formation needs a second Falinks on the board, so it too depends on
+    // Falinks's Coordinated Unit needs a second Falinks on the board, so it too depends on
     // more than the card itself.
     let formation_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
         Some(AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { reduction, .. })
             if has_another_with_same_name_in_play(state, target_player, receiving_pokemon) =>
         {
-            debug!("Iron Defense Formation: Reducing damage by {}", reduction);
+            debug!("Coordinated Unit: Reducing damage by {}", reduction);
             *reduction
         }
         _ => 0,
@@ -802,7 +802,7 @@ fn has_arceus_in_play(state: &State, player: usize) -> bool {
 }
 
 /// Whether `player` has a second Pokémon in play with the same name as `pokemon` (Falinks's
-/// Iron Defense Formation counts "another Falinks", so the holder itself does not qualify).
+/// Coordinated Unit counts "another Falinks", so the holder itself does not qualify).
 fn has_another_with_same_name_in_play(state: &State, player: usize, pokemon: &PlayedCard) -> bool {
     let name = pokemon.get_name();
     state
@@ -844,7 +844,7 @@ fn get_ability_damage_increase(
         ability_mechanic_from_effect(&ability.effect)
     {
         if has_another_with_same_name_in_play(state, attacking_player, attacking_pokemon) {
-            debug!("Iron Defense Formation: Increasing damage by {}", boost);
+            debug!("Coordinated Unit: Increasing damage by {}", boost);
             return *boost;
         }
     }

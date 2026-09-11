@@ -596,7 +596,7 @@ fn test_armaldo_abyssal_drop_pays_its_energy_and_marks_a_spot() {
     );
 }
 
-/// Falinks's "Iron Defense Formation": "If you have another Falinks in play, this Pokémon's
+/// Falinks's "Coordinated Unit": "If you have another Falinks in play, this Pokémon's
 /// attacks do +20 damage to your opponent's Active Pokémon, and this Pokémon takes -20 damage
 /// from attacks from your opponent's Pokémon."
 #[test]
