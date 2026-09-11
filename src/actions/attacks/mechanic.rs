@@ -33,6 +33,22 @@ pub enum Mechanic {
     HealAllYourPokemon {
         amount: u32,
     },
+    /// Diancie's Diamond Storm: heal `amount` from each of your Pokémon of `energy_type`.
+    HealAllYourTypedPokemon {
+        energy_type: EnergyType,
+        amount: u32,
+    },
+    /// Mimikyu's Shadow Hit: the attack also puts `damage` on 1 of your own Pokémon (your choice).
+    AlsoDamageOneOfYours {
+        damage: u32,
+    },
+    /// Musharna's Dream Dance: both Active Pokémon come down with the same conditions.
+    InflictStatusOnBothActive {
+        conditions: Vec<StatusCondition>,
+    },
+    /// Mew's Psy Report and Unown's CHECK: the card only reveals information, which this engine
+    /// has in full already. Modeled as a no-op so the card is playable.
+    RevealOnly,
     /// Heal `amount` from each Benched Pokémon; if `only_basic` is true, only Basic Pokémon
     /// (Alomomola heals all, Ho-Oh heals only Basic).
     HealAllBenchedPokemon {
@@ -928,6 +944,41 @@ pub enum Mechanic {
         name_part: String,
         extra_damage: u32,
     },
+    /// Wobbuffet's Reply Strongly: extra damage when this Pokémon was hit by an attack while
+    /// Active during the opponent's last turn.
+    ExtraDamageIfActiveDamagedLastTurn {
+        extra_damage: u32,
+    },
+    /// Uxie's Mind Boost: attach one `energy_type` Energy from the Energy Zone to one of your
+    /// Pokémon named in `pokemon_names` (your choice).
+    AttachEnergyFromZoneToNamed {
+        energy_type: EnergyType,
+        pokemon_names: Vec<String>,
+    },
+    /// Mesprit's Supreme Blast: usable only while `pokemon_names` are all on your Bench; the
+    /// attack then costs this Pokémon every Energy it carries.
+    RequireBenchedNamesThenDiscardAllEnergy {
+        pokemon_names: Vec<String>,
+    },
+    /// Mew's Miraculous Memory: one attack from among the Pokémon in the opponent's hand and deck
+    /// is picked at random and used as this attack.
+    RandomAttackFromOpponentHandAndDeck,
+    /// Clefairy's Mini-Metronome: on heads, copy one of the defender's attacks.
+    CoinFlipCopyDefenderAttack,
+    /// Gothitelle's Stellar Cradle: while the effect lasts, the Defending Pokémon falls asleep if
+    /// its owner attaches Energy from their Energy Zone to it.
+    SleepIfDefenderIsCharged,
+    /// Scream Tail's Shooing Shout: the same as `CoinFlipDiscardOpponentActive`, but every one of
+    /// `flips` coins has to come up heads.
+    AllHeadsDiscardOpponentActive {
+        flips: usize,
+    },
+    /// Mime Jr.'s Mime-y Shuffle: shuffle your hand into your deck, then draw one card for each
+    /// card in the opponent's hand.
+    ShuffleHandThenDrawOpponentHandSize,
+    /// Hoopa's Mischievous Ring: before the damage, every Pokémon Tool on the opponent's side
+    /// goes back into their deck.
+    ShuffleOpponentToolsIntoDeck,
     /// Guzzlord's Breakcore: on heads the opponent's Active Pokémon goes straight to the discard
     /// pile. It counts as a knockout, so the points are awarded the usual way.
     CoinFlipDiscardOpponentActive,
@@ -955,6 +1006,35 @@ pub enum Mechanic {
     /// picked at random.
     RandomStatusConditionToDefender {
         options: Vec<StatusCondition>,
+    },
+    /// Grumpig's Swaying Dance: like `ExtraDamageIfHandSizeIs`, but it counts the opponent's hand.
+    ExtraDamageIfOpponentHandSizeIs {
+        hand_sizes: Vec<usize>,
+        extra_damage: u32,
+    },
+    /// Chimecho's Extrasensory: extra damage while both hands hold the same number of cards.
+    ExtraDamageIfHandsAreEqual {
+        extra_damage: u32,
+    },
+    /// Mr. Mime's Synchro Dance: extra damage while both Active Pokémon carry the same number of
+    /// Energy.
+    ExtraDamageIfEqualEnergyCount {
+        extra_damage: u32,
+    },
+    /// Enamorus's Smitten Strike: extra damage while both Active Pokémon share an Energy type.
+    ExtraDamageIfSharedEnergyType {
+        extra_damage: u32,
+    },
+    /// Flutter Mane's Hexing Flight: the attack does nothing unless this Pokémon moved from the
+    /// Bench to the Active Spot this turn.
+    NothingUnlessMovedFromBench,
+    /// Team Rocket's Wobbuffet's Rocket Frenzy: reveal the top `reveal` cards and add
+    /// `damage_per` for each Pokémon among them whose name contains `name_part`, then shuffle
+    /// them back.
+    RevealTopThenDamagePerNamedPokemon {
+        reveal: usize,
+        name_part: String,
+        damage_per: u32,
     },
     /// Swalot's Swallow Up: extra damage while the opponent's Active Pokémon has strictly less
     /// remaining HP than the attacker.

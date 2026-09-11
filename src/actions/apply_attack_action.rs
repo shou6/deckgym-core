@@ -98,7 +98,8 @@ fn apply_attack_common_modifiers(
 
     outcomes = apply_defender_damage_prevention_if_needed(acting_player, state, attack, outcomes);
     outcomes = apply_defender_guts_if_needed(acting_player, state, attack, outcomes);
-    apply_defender_point_denial_if_needed(acting_player, state, outcomes)
+    outcomes = apply_defender_point_denial_if_needed(acting_player, state, outcomes);
+    apply_defender_perish_body_if_needed(acting_player, state, outcomes)
 }
 
 fn apply_copied_attack_modifiers(
@@ -110,7 +111,8 @@ fn apply_copied_attack_modifiers(
     let outcomes =
         apply_defender_damage_prevention_if_needed(acting_player, state, attack, base_outcomes);
     let outcomes = apply_defender_guts_if_needed(acting_player, state, attack, outcomes);
-    apply_defender_point_denial_if_needed(acting_player, state, outcomes)
+    let outcomes = apply_defender_point_denial_if_needed(acting_player, state, outcomes);
+    apply_defender_perish_body_if_needed(acting_player, state, outcomes)
 }
 
 fn apply_defender_damage_prevention_if_needed(
@@ -224,6 +226,42 @@ fn apply_defender_point_denial_if_needed(
     })
 }
 
+/// Galarian Cursola's Perish Body: when the attack knocks it out, flip a coin; on heads the
+/// Attacking Pokemon goes down with it. Runs as a post-damage effect, so both knockouts are
+/// collected in the same pass.
+fn apply_defender_perish_body_if_needed(
+    acting_player: usize,
+    state: &State,
+    outcomes: AttackOutcomes,
+) -> AttackOutcomes {
+    let opponent = (acting_player + 1) % 2;
+    let has_perish_body = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .is_some_and(|p| {
+            matches!(
+                get_ability_mechanic(&p.card),
+                Some(AbilityMechanic::CoinFlipKnockOutAttackerOnKnockout)
+            )
+        });
+    if !has_perish_body {
+        return outcomes;
+    }
+
+    outcomes.with_post_damage_effect(move |rng, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        let fainted = state.in_play_pokemon[opponent][0]
+            .as_ref()
+            .is_some_and(|p| p.get_remaining_hp() == 0);
+        if !fainted || !rng.gen_bool(0.5) {
+            return;
+        }
+        if let Some(attacker) = state.in_play_pokemon[action.actor][0].as_mut() {
+            let remaining = attacker.get_remaining_hp();
+            attacker.apply_damage(remaining);
+        }
+    })
+}
+
 fn forecast_attack_inner(state: &State, attack: &Attack) -> AttackOutcomes {
     let Some(effect_text) = &attack.effect else {
         return active_damage_doutcome(attack.fixed_damage);
@@ -287,6 +325,34 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::HealAllYourPokemon { amount } => {
             heal_all_your_pokemon_attack(attack.fixed_damage, *amount)
         }
+        Mechanic::HealAllYourTypedPokemon {
+            energy_type,
+            amount,
+        } => {
+            let energy_type = *energy_type;
+            let amount = *amount;
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                for pokemon in state.in_play_pokemon[action.actor].iter_mut().flatten() {
+                    if pokemon.get_energy_type() == Some(energy_type) {
+                        pokemon.heal(amount);
+                    }
+                }
+            })
+        }
+        Mechanic::AlsoDamageOneOfYours { damage } => {
+            also_damage_one_of_yours(state, attack.fixed_damage, *damage)
+        }
+        Mechanic::InflictStatusOnBothActive { conditions } => {
+            let conditions = conditions.clone();
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                for condition in &conditions {
+                    state.apply_status_condition(opponent, 0, *condition);
+                    state.apply_status_condition(action.actor, 0, *condition);
+                }
+            })
+        }
+        Mechanic::RevealOnly => active_damage_doutcome(attack.fixed_damage),
         Mechanic::HealAllBenchedPokemon { amount, only_basic } => {
             heal_all_benched_pokemon_attack(attack.fixed_damage, *amount, *only_basic)
         }
@@ -1271,6 +1337,123 @@ fn forecast_effect_attack_by_mechanic(
             name_part,
             *extra_damage,
         ),
+        Mechanic::ExtraDamageIfActiveDamagedLastTurn { extra_damage } => {
+            if state.active_was_damaged_last_turn(state.current_player) {
+                active_damage_doutcome(attack.fixed_damage + *extra_damage)
+            } else {
+                active_damage_doutcome(attack.fixed_damage)
+            }
+        }
+        Mechanic::AttachEnergyFromZoneToNamed {
+            energy_type,
+            pokemon_names,
+        } => attach_energy_from_zone_to_named(
+            state,
+            attack.fixed_damage,
+            *energy_type,
+            pokemon_names.clone(),
+        ),
+        Mechanic::RequireBenchedNamesThenDiscardAllEnergy { .. } => {
+            // Legality is enforced where attacks are offered; here it is plain damage plus the
+            // Energy cost.
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                if let Some(attacker) = state.in_play_pokemon[action.actor][0].as_mut() {
+                    let discarded = std::mem::take(&mut attacker.attached_energy);
+                    state.discard_energies[action.actor].extend(discarded);
+                }
+            })
+        }
+        Mechanic::RandomAttackFromOpponentHandAndDeck => {
+            AttackOutcomes::single(AttackOutcome::effect_only(move |rng, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                let attacks: Vec<Attack> = state.hands[opponent]
+                    .iter()
+                    .chain(state.decks[opponent].cards.iter())
+                    .flat_map(|card| card.get_attacks())
+                    .filter(|attack| !is_copy_attack(attack))
+                    .collect();
+                if attacks.is_empty() {
+                    return;
+                }
+                let chosen = attacks[rng.gen_range(0..attacks.len())].clone();
+                state
+                    .move_generation_stack
+                    .push((action.actor, vec![SimpleAction::Attack(chosen)]));
+            }))
+        }
+        Mechanic::CoinFlipCopyDefenderAttack => AttackOutcomes::binary_coin(
+            AttackOutcome::effect_only(move |_, state, action| {
+                let choices = copied_attack_choices(
+                    state,
+                    action.actor,
+                    &CopyAttackSource::OpponentActive,
+                    false,
+                );
+                if !choices.is_empty() {
+                    state.move_generation_stack.push((action.actor, choices));
+                }
+            }),
+            AttackOutcome::noop(),
+        ),
+        Mechanic::SleepIfDefenderIsCharged => {
+            active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                state
+                    .get_active_mut(opponent)
+                    .add_effect(CardEffect::SleepWhenCharged, 1);
+            })
+        }
+        Mechanic::AllHeadsDiscardOpponentActive { flips } => {
+            let flips = *flips;
+            AttackOutcomes::binomial_by_heads(flips, move |heads| {
+                if heads == flips {
+                    AttackOutcome::effect_only(move |_, state, action| {
+                        let opponent = (action.actor + 1) % 2;
+                        if let Some(pokemon) = state.in_play_pokemon[opponent][0].as_mut() {
+                            let remaining = pokemon.get_remaining_hp();
+                            pokemon.apply_damage(remaining);
+                        }
+                        handle_knockouts(state, (action.actor, 0), true);
+                    })
+                } else {
+                    AttackOutcome::noop()
+                }
+            })
+        }
+        Mechanic::ShuffleHandThenDrawOpponentHandSize => {
+            AttackOutcomes::single(AttackOutcome::effect_only(move |rng, state, action| {
+                let opponent = (action.actor + 1) % 2;
+                let draw_count = state.hands[opponent].len();
+                let hand = std::mem::take(&mut state.hands[action.actor]);
+                state.decks[action.actor].cards.extend(hand);
+                state.decks[action.actor].shuffle(false, rng);
+                for _ in 0..draw_count {
+                    match state.decks[action.actor].draw() {
+                        Some(card) => state.hands[action.actor].push(card),
+                        None => break,
+                    }
+                }
+            }))
+        }
+        Mechanic::ShuffleOpponentToolsIntoDeck => {
+            AttackOutcomes::single(AttackOutcome::effect_then_damage(
+                move |rng, state, action| {
+                    let opponent = (action.actor + 1) % 2;
+                    let mut tools = vec![];
+                    for pokemon in state.in_play_pokemon[opponent].iter_mut().flatten() {
+                        if let Some(tool) = pokemon.attached_tool.take() {
+                            tools.push(tool);
+                        }
+                    }
+                    if tools.is_empty() {
+                        return;
+                    }
+                    state.decks[opponent].cards.extend(tools);
+                    state.decks[opponent].shuffle(false, rng);
+                },
+                vec![(attack.fixed_damage, true, 0)],
+            ))
+        }
         Mechanic::CoinFlipDiscardOpponentActive => AttackOutcomes::binary_coin(
             AttackOutcome::effect_only(move |_, state, action| {
                 let opponent = (action.actor + 1) % 2;
@@ -1306,6 +1489,70 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::RandomStatusConditionToDefender { options } => {
             random_status_condition_to_defender(state, attack.fixed_damage, options)
         }
+        Mechanic::ExtraDamageIfOpponentHandSizeIs {
+            hand_sizes,
+            extra_damage,
+        } => {
+            let opponent = (state.current_player + 1) % 2;
+            let hand_size = state.hands[opponent].len();
+            if hand_sizes.contains(&hand_size) {
+                active_damage_doutcome(attack.fixed_damage + *extra_damage)
+            } else {
+                active_damage_doutcome(attack.fixed_damage)
+            }
+        }
+        Mechanic::ExtraDamageIfHandsAreEqual { extra_damage } => {
+            let opponent = (state.current_player + 1) % 2;
+            if state.hands[state.current_player].len() == state.hands[opponent].len() {
+                active_damage_doutcome(attack.fixed_damage + *extra_damage)
+            } else {
+                active_damage_doutcome(attack.fixed_damage)
+            }
+        }
+        Mechanic::ExtraDamageIfEqualEnergyCount { extra_damage } => {
+            let opponent = (state.current_player + 1) % 2;
+            let mine = state.get_active(state.current_player).attached_energy.len();
+            let theirs = state.get_active(opponent).attached_energy.len();
+            if mine == theirs {
+                active_damage_doutcome(attack.fixed_damage + *extra_damage)
+            } else {
+                active_damage_doutcome(attack.fixed_damage)
+            }
+        }
+        Mechanic::ExtraDamageIfSharedEnergyType { extra_damage } => {
+            let opponent = (state.current_player + 1) % 2;
+            let theirs: std::collections::HashSet<_> = state
+                .get_active(opponent)
+                .attached_energy
+                .iter()
+                .copied()
+                .collect();
+            let shared = state
+                .get_active(state.current_player)
+                .attached_energy
+                .iter()
+                .any(|energy| theirs.contains(energy));
+            if shared {
+                active_damage_doutcome(attack.fixed_damage + *extra_damage)
+            } else {
+                active_damage_doutcome(attack.fixed_damage)
+            }
+        }
+        Mechanic::NothingUnlessMovedFromBench => {
+            if state
+                .get_active(state.current_player)
+                .moved_to_active_this_turn
+            {
+                active_damage_doutcome(attack.fixed_damage)
+            } else {
+                active_damage_doutcome(0)
+            }
+        }
+        Mechanic::RevealTopThenDamagePerNamedPokemon {
+            reveal,
+            name_part,
+            damage_per,
+        } => reveal_top_then_damage_per_named_pokemon(*reveal, name_part.clone(), *damage_per),
         Mechanic::ExtraDamageIfDefenderHasLessHp { extra_damage } => {
             let opponent = (state.current_player + 1) % 2;
             let attacker_hp = state.get_active(state.current_player).get_remaining_hp();
@@ -3003,6 +3250,32 @@ fn heal_one_your_benched_pokemon_attack(amount: u32) -> AttackOutcomes {
         if !choices.is_empty() {
             state.move_generation_stack.push((action.actor, choices));
         }
+    })
+}
+
+/// Mimikyu's Shadow Hit: the attacker chooses which of its own Pokemon takes the 20.
+fn also_damage_one_of_yours(state: &State, damage: u32, self_damage: u32) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let own: Vec<usize> = state
+        .enumerate_in_play_pokemon(state.current_player)
+        .map(|(in_play_idx, _)| in_play_idx)
+        .collect();
+    if own.is_empty() {
+        return active_damage_doutcome(damage);
+    }
+    AttackOutcomes::single_effect(move |_, state, action| {
+        let choices: Vec<SimpleAction> = own
+            .iter()
+            .map(|in_play_idx| SimpleAction::ApplyDamage {
+                attacking_ref: (action.actor, 0),
+                targets: vec![
+                    (damage, opponent, 0),
+                    (self_damage, action.actor, *in_play_idx),
+                ],
+                is_from_active_attack: true,
+            })
+            .collect();
+        state.move_generation_stack.push((action.actor, choices));
     })
 }
 
@@ -4982,6 +5255,71 @@ fn drag_opponent_bench_then_damage(state: &State, damage: u32) -> AttackOutcomes
 
 /// Golurk - Heavy Rocket: peek at the top of the deck, count the heavy Pokemon,
 /// and put everything back.
+/// Uxie's Mind Boost: only the named partners are offered the Energy.
+fn attach_energy_from_zone_to_named(
+    state: &State,
+    damage: u32,
+    energy_type: EnergyType,
+    pokemon_names: Vec<String>,
+) -> AttackOutcomes {
+    let targets: Vec<usize> = state
+        .enumerate_in_play_pokemon(state.current_player)
+        .filter(|(_, pokemon)| pokemon_names.contains(&pokemon.get_name()))
+        .map(|(in_play_idx, _)| in_play_idx)
+        .collect();
+    if targets.is_empty() {
+        return active_damage_doutcome(damage);
+    }
+    active_damage_effect_doutcome(damage, move |_, state, action| {
+        let choices: Vec<SimpleAction> = targets
+            .iter()
+            .map(|in_play_idx| SimpleAction::Attach {
+                attachments: vec![(1, energy_type, *in_play_idx)],
+                is_turn_energy: false,
+            })
+            .collect();
+        state.move_generation_stack.push((action.actor, choices));
+    })
+}
+
+/// Team Rocket's Wobbuffet's Rocket Frenzy: "this attack does 30 damage for each Pokémon you
+/// find there", so an empty reveal means no damage at all - the printed 30 is the per-Pokémon
+/// figure, not a base. The total depends on the reveal, so it is queued as an `ApplyDamage`
+/// (which runs the usual modifiers) rather than applied raw.
+fn reveal_top_then_damage_per_named_pokemon(
+    reveal: usize,
+    name_part: String,
+    damage_per: u32,
+) -> AttackOutcomes {
+    AttackOutcomes::single(AttackOutcome::effect_only(move |rng, state, action| {
+        let mut revealed = Vec::new();
+        for _ in 0..reveal {
+            match state.decks[action.actor].draw() {
+                Some(card) => revealed.push(card),
+                None => break,
+            }
+        }
+        let found = revealed
+            .iter()
+            .filter(
+                |card| matches!(card, Card::Pokemon(pokemon) if pokemon.name.contains(&name_part)),
+            )
+            .count() as u32;
+        state.decks[action.actor].cards.extend(revealed);
+        state.decks[action.actor].shuffle(false, rng);
+
+        let opponent = (action.actor + 1) % 2;
+        state.move_generation_stack.push((
+            action.actor,
+            vec![SimpleAction::ApplyDamage {
+                attacking_ref: (action.actor, 0),
+                targets: vec![(found * damage_per, opponent, 0)],
+                is_from_active_attack: true,
+            }],
+        ));
+    }))
+}
+
 fn reveal_top_then_damage_per_heavy_pokemon(
     base_damage: u32,
     reveal: usize,

@@ -51,6 +51,9 @@ pub(crate) fn generate_attack_actions(state: &State) -> Vec<SimpleAction> {
             if restricted_attack_names.contains(&attack.title) {
                 continue;
             }
+            if !attack_requirements_met(&attack, state, current_player) {
+                continue;
+            }
             let base_cost = alternative_attack_cost(&attack, state, current_player)
                 .unwrap_or_else(|| attack.energy_required.clone());
             let modified_cost = get_attack_cost(&base_cost, state, current_player);
@@ -103,4 +106,22 @@ fn alternative_attack_cost(
         _ => return None,
     };
     Some(vec![*energy_type; *amount])
+}
+
+/// Mesprit's Supreme Blast: "You can use this attack only if you have Uxie and Azelf on your
+/// Bench." Attacks with no such clause are always available.
+fn attack_requirements_met(attack: &Attack, state: &State, player: usize) -> bool {
+    let Some(effect) = attack.effect.as_deref() else {
+        return true;
+    };
+    match EFFECT_MECHANIC_MAP.get(effect) {
+        Some(Mechanic::RequireBenchedNamesThenDiscardAllEnergy { pokemon_names }) => {
+            pokemon_names.iter().all(|name| {
+                state
+                    .enumerate_bench_pokemon(player)
+                    .any(|(_, pokemon)| pokemon.get_name() == *name)
+            })
+        }
+        _ => true,
+    }
 }

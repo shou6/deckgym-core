@@ -266,6 +266,9 @@ mod ninetales_ember_dance_test;
 mod oricorio_happiny_damage_boost_test;
 #[path = "pokemon/oricorio_yveltal_test.rs"]
 mod oricorio_yveltal_test;
+#[path = "pokemon/psychic_batch_test.rs"]
+mod psychic_batch_test;
+
 #[path = "pokemon/passimian_ex_offload_pass_test.rs"]
 mod passimian_ex_offload_pass_test;
 #[path = "pokemon/persian_test.rs"]

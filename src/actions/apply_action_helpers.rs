@@ -324,6 +324,8 @@ fn apply_pokemon_checkup(
         std::mem::take(&mut mutated_state.knocked_out_types_this_turn);
     mutated_state.points_gained_last_turn =
         std::mem::take(&mut mutated_state.points_gained_this_turn);
+    mutated_state.active_damaged_last_turn =
+        std::mem::take(&mut mutated_state.active_damaged_this_turn);
 }
 
 fn finish_turn_after_checkup(state: &mut State, rng: &mut StdRng) {
@@ -575,6 +577,11 @@ pub(crate) fn handle_damage_only(
                 target_pokemon_idx,
                 target_pokemon.get_remaining_hp()
             );
+        }
+
+        // Wobbuffet's Reply Strongly: remember that this player's Active was hit by an attack.
+        if is_from_active_attack && target_pokemon_idx == 0 && attacking_player != target_player {
+            state.active_damaged_this_turn[target_player] = true;
         }
 
         // Consider Counter-Attack (only if from Active Attack to Active)

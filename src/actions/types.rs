@@ -203,6 +203,9 @@ pub enum SimpleAction {
     ApplyStatusesToOpponentActive {
         conditions: Vec<StatusCondition>,
     },
+    /// Polteageist's Refreshing Tea: the opponent shuffles their hand into their deck and draws
+    /// one card for each point they still need to win.
+    OpponentRedrawByRemainingPoints,
     /// Galarian Perrserker's Dig Up: put `count` Pokémon Tool cards from your discard pile into
     /// your hand. Which ones is not modeled - they are all just cards - so the oldest are taken,
     /// mirroring the simplification in `DiscardRandomOpponentActiveEnergy`.
@@ -390,6 +393,9 @@ impl fmt::Display for SimpleAction {
             }
             SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
                 write!(f, "DiscardToolsFromHandThenDamage({count}, {damage})")
+            }
+            SimpleAction::OpponentRedrawByRemainingPoints => {
+                write!(f, "OpponentRedrawByRemainingPoints")
             }
             SimpleAction::RecoverToolsFromDiscard { count } => {
                 write!(f, "RecoverToolsFromDiscard({count})")

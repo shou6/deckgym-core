@@ -76,6 +76,7 @@ fn get_weight(action: &SimpleAction) -> u32 {
         SimpleAction::ApplyCardEffectToSelf { .. } => 8, // A free shield is usually worth taking
         SimpleAction::MoveEnergiesFromActive { .. } => 5,
         SimpleAction::RecoverToolsFromDiscard { .. } => 8, // Free cards back
+        SimpleAction::OpponentRedrawByRemainingPoints => 5,
 
         SimpleAction::ReturnPokemonToHand { .. } => 5,
         SimpleAction::ShuffleInPlayPokemonIntoDeck { .. } => 5,

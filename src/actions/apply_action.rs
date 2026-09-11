@@ -10,11 +10,11 @@ use crate::{
         apply_abilities_action::forecast_ability,
         apply_action_helpers::{apply_activate, wrap_with_common_logic},
     },
-    effects::TurnEffect,
+    effects::{CardEffect, TurnEffect},
     hooks::{
         get_retreat_cost, on_bench_from_hand, on_evolve, to_playable_card, DamageModifierContext,
     },
-    models::{Card, EnergyType},
+    models::{Card, EnergyType, StatusCondition},
     state::{PendingCoinReflip, State},
     tools::{self, is_tool_card},
 };
@@ -194,6 +194,7 @@ pub fn forecast_action(state: &State, action: &Action) -> Outcomes {
         | SimpleAction::ApplyCardEffectToSelf { .. }
         | SimpleAction::MoveEnergiesFromActive { .. }
         | SimpleAction::RecoverToolsFromDiscard { .. }
+        | SimpleAction::OpponentRedrawByRemainingPoints
         | SimpleAction::ReturnPokemonToHand { .. }
         | SimpleAction::ShuffleInPlayPokemonIntoDeck { .. }
         | SimpleAction::DiscardToolFromPokemon { .. }
@@ -481,6 +482,20 @@ fn apply_deterministic_action(state: &mut State, action: &Action) {
         SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
             apply_discard_tools_from_hand_then_damage(action.actor, state, *count, *damage)
         }
+        SimpleAction::OpponentRedrawByRemainingPoints => {
+            let opponent = (action.actor + 1) % 2;
+            let remaining_points = 3u8.saturating_sub(state.points[opponent]) as usize;
+            let hand = std::mem::take(&mut state.hands[opponent]);
+            state.decks[opponent].cards.extend(hand);
+            // Shuffling needs the rng, which deterministic actions do not get; the draw below
+            // takes from the top either way, and decks are already in random order.
+            for _ in 0..remaining_points {
+                match state.decks[opponent].draw() {
+                    Some(card) => state.hands[opponent].push(card),
+                    None => break,
+                }
+            }
+        }
         SimpleAction::RecoverToolsFromDiscard { count } => {
             for _ in 0..*count {
                 let Some(pos) = state.discard_piles[action.actor]
@@ -580,6 +595,20 @@ fn apply_attach_energy(
         }
 
         state.attach_energy_from_zone(actor, *in_play_idx, *energy, *amount, is_turn_energy);
+
+        // Gothitelle's Stellar Cradle: charging the cradled Pokemon from the Energy Zone puts
+        // it to sleep.
+        let cradled = state.in_play_pokemon[actor][*in_play_idx]
+            .as_ref()
+            .is_some_and(|pokemon| {
+                pokemon
+                    .get_active_effects()
+                    .iter()
+                    .any(|effect| matches!(effect, CardEffect::SleepWhenCharged))
+            });
+        if cradled {
+            state.apply_status_condition(actor, *in_play_idx, StatusCondition::Asleep);
+        }
     }
 }
 

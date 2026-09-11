@@ -234,6 +234,8 @@ fn forecast_ability_by_mechanic(
             switch_out_opponent_active_to_bench()
         }
         AbilityMechanic::CoinFlipSleepOpponentActive => coin_flip_sleep_opponent_active(),
+        AbilityMechanic::LookAtTopCard => Outcomes::single_fn(|_, _, _| {}),
+        AbilityMechanic::UnownDuo { .. } => panic!("UnownDuo is a passive ability"),
         AbilityMechanic::CoinFlipPoisonOpponentActive => coin_flip_poison_opponent_active(),
         AbilityMechanic::GatherTypedEnergyToSelf { energy_type } => {
             gather_typed_energy_to_self(*energy_type)
@@ -306,6 +308,12 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::CanEvolveOnFirstTurnIfActive => {
             panic!("CanEvolveOnFirstTurnIfActive is a passive ability")
         }
+        AbilityMechanic::NoRetreatIfNamedPokemonInPlay { .. } => {
+            panic!("NoRetreatIfNamedPokemonInPlay is a passive ability")
+        }
+        AbilityMechanic::CoinFlipKnockOutAttackerOnKnockout => {
+            panic!("CoinFlipKnockOutAttackerOnKnockout is a passive ability")
+        }
         AbilityMechanic::DamageAllOpponentPokemonOnKnockout { .. } => {
             panic!("DamageAllOpponentPokemonOnKnockout is a passive ability")
         }
@@ -323,6 +331,9 @@ fn forecast_ability_by_mechanic(
         }
         AbilityMechanic::IncreaseDamageForEvolvesFromOnBench { .. } => {
             panic!("IncreaseDamageForEvolvesFromOnBench is a passive ability")
+        }
+        AbilityMechanic::OpponentRedrawByRemainingPointsOnEvolve => {
+            panic!("OpponentRedrawByRemainingPointsOnEvolve is triggered on evolve")
         }
         AbilityMechanic::RecoverToolsFromDiscardOnEvolve { .. } => {
             panic!("RecoverToolsFromDiscardOnEvolve is triggered on evolve")

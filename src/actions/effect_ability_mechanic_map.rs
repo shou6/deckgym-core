@@ -181,7 +181,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 70 damage to the Attacking Pokémon.",
             AbilityMechanic::CounterattackDamageOnKnockout { amount: 70 },
         );
-        // map.insert("If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, flip a coin. If heads, the Attacking Pokémon is Knocked Out.", todo_implementation);
+        map.insert(
+            "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, flip a coin. If heads, the Attacking Pokémon is Knocked Out.",
+            AbilityMechanic::CoinFlipKnockOutAttackerOnKnockout,
+        );
         map.insert(
             "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, move all [F] Energy from this Pokémon to 1 of your Benched Pokémon.",
             AbilityMechanic::MoveAllTypedEnergyToBenchOnKnockout {
@@ -217,6 +220,12 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
         map.insert(
             "If you have Arceus or Arceus ex in play, attacks used by this Pokémon do +30 damage to your opponent's Active Pokémon.",
             AbilityMechanic::IncreaseDamageIfArceusInPlay { amount: 30 },
+        );
+        map.insert(
+            "If you have Latias in play, this Pokémon has no Retreat Cost.",
+            AbilityMechanic::NoRetreatIfNamedPokemonInPlay {
+                pokemon_name: "Latias".to_string(),
+            },
         );
         map.insert(
             "If you have Arceus or Arceus ex in play, this Pokémon has no Retreat Cost.",
@@ -298,7 +307,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.",
             AbilityMechanic::CoinFlipParalyzeOpponentActiveOnEvolve,
         );
-        // map.insert("Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may have your opponent shuffle their hand into their deck. For each remaining point that your opponent needs to win, they draw a card.", todo_implementation);
+        map.insert(
+            "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may have your opponent shuffle their hand into their deck. For each remaining point that your opponent needs to win, they draw a card.",
+            AbilityMechanic::OpponentRedrawByRemainingPointsOnEvolve,
+        );
         map.insert(
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may heal 60 damage from 1 of your [W] Pokémon.",
             AbilityMechanic::HealTypedPokemonOnEvolve {
@@ -332,7 +344,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Once during your turn, if this Pokémon is on your Bench, you may attach an Energy from your discard pile to your Active [N] Pokémon.",
             AbilityMechanic::AttachEnergyFromDiscardToActiveFromBench,
         );
-        // map.insert("Once during your turn, you may choose either player. Look at the top card of that player's deck.", todo_implementation);
+        map.insert(
+            "Once during your turn, you may choose either player. Look at the top card of that player's deck.",
+            AbilityMechanic::LookAtTopCard,
+        );
         map.insert(
             "Once during your turn, you may discard the top card of your opponent's deck.",
             AbilityMechanic::DiscardTopCardOpponentDeck,
@@ -465,8 +480,22 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Prevent all effects of attacks used by your opponent's Pokémon done to this Pokémon.",
             AbilityMechanic::PreventAllAttackEffects,
         );
-        // map.insert("This Ability works if you have any Unown in play with an Ability other than GUARD. All of your Pokémon take -10 damage from attacks from your opponent's Pokémon.", todo_implementation);
-        // map.insert("This Ability works if you have any Unown in play with an Ability other than POWER. Attacks used by your Pokémon do +10 damage to your opponent's Active Pokémon.", todo_implementation);
+        map.insert(
+            "This Ability works if you have any Unown in play with an Ability other than GUARD. All of your Pokémon take -10 damage from attacks from your opponent's Pokémon.",
+            AbilityMechanic::UnownDuo {
+                own_ability_title: "GUARD".to_string(),
+                reduce_damage: 10,
+                increase_damage: 0,
+            },
+        );
+        map.insert(
+            "This Ability works if you have any Unown in play with an Ability other than POWER. Attacks used by your Pokémon do +10 damage to your opponent's Active Pokémon.",
+            AbilityMechanic::UnownDuo {
+                own_ability_title: "POWER".to_string(),
+                reduce_damage: 0,
+                increase_damage: 10,
+            },
+        );
         map.insert(
             "This Pokémon can evolve into any Pokémon that evolves from Eevee if you play it from your hand onto this Pokémon. (This Pokémon can't evolve during your first turn or the turn you play it.)",
             AbilityMechanic::CanEvolveIntoEeveeEvolution,

@@ -71,6 +71,17 @@ pub(crate) fn get_retreat_cost_for(
         }) {
             return vec![];
         }
+        // Latios - Fantastical Floating: free while the named partner is in play.
+        if let Some(AbilityMechanic::NoRetreatIfNamedPokemonInPlay { pokemon_name }) =
+            get_ability_mechanic(&card.card)
+        {
+            if state
+                .enumerate_in_play_pokemon(owner)
+                .any(|(_, pokemon)| pokemon.get_name() == *pokemon_name)
+            {
+                return vec![];
+            }
+        }
         // Alolan Raichu - Surge Surfer: free while any Stadium is on the table.
         if matches!(
             get_ability_mechanic(&card.card),

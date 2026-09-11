@@ -34,6 +34,9 @@ pub enum CardEffect {
     /// Glimmora's Shattering Crystal: the coin came up heads, so the opponent gets no points for
     /// knocking this Pokémon out.
     DeniesPointsOnKnockout,
+    /// Gothitelle's Stellar Cradle: this Pokémon falls asleep if its owner attaches Energy from
+    /// their Energy Zone to it.
+    SleepWhenCharged,
     PreventAllDamageAndEffects,
     /// Prevent all damage from attacks if the incoming damage is at most `threshold` (e.g. Cascoon's Harden).
     PreventDamageIfLessOrEqual {

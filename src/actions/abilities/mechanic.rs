@@ -300,6 +300,25 @@ pub enum AbilityMechanic {
     /// Glimmora's Shattering Crystal: when this Pokémon is Knocked Out, flip a coin; on heads the
     /// opponent gets no points for it.
     CoinFlipDenyPointsOnKnockout,
+    /// Unown's CHECK: "look at the top card of a deck" - information this engine already has, so
+    /// using it does nothing. Modeled so the card is playable.
+    LookAtTopCard,
+    /// Unown's GUARD and POWER: each works only alongside an Unown with a *different* Ability,
+    /// which the card spells out by name. `own_ability_title` is this card's own Ability, so the
+    /// check is "another Unown whose Ability is not this one".
+    UnownDuo {
+        own_ability_title: String,
+        reduce_damage: u32,
+        increase_damage: u32,
+    },
+    /// Latios's Fantastical Floating: free retreat while `pokemon_name` is in play. Heatran's
+    /// `NoRetreatIfArceusInPlay` is the same shape with the name baked in.
+    NoRetreatIfNamedPokemonInPlay {
+        pokemon_name: String,
+    },
+    /// Galarian Cursola's Perish Body: if this Pokémon is Knocked Out in the Active Spot by an
+    /// opponent's attack, flip a coin; on heads the Attacking Pokémon goes down too.
+    CoinFlipKnockOutAttackerOnKnockout,
     /// Spiritomb's Final Scream: if this Pokémon is Knocked Out in the Active Spot by an
     /// opponent's attack, do `amount` damage to each of that opponent's Pokémon.
     DamageAllOpponentPokemonOnKnockout {
@@ -331,6 +350,10 @@ pub enum AbilityMechanic {
         pokemon_name: String,
         amount: u32,
     },
+    /// Polteageist's Refreshing Tea: when this Pokémon evolves from hand, its owner may have the
+    /// opponent shuffle their hand into their deck and draw one card for each point they still
+    /// need to win.
+    OpponentRedrawByRemainingPointsOnEvolve,
     /// Galarian Perrserker's Dig Up: when this Pokémon evolves from hand, its owner may put
     /// `count` Pokémon Tool cards from their discard pile into their hand.
     RecoverToolsFromDiscardOnEvolve {

@@ -94,6 +94,10 @@ pub struct State {
     pub(crate) has_used_victory_star: [bool; 2],
     /// Gholdengo's Luxury Coin, the Trainer-card counterpart of Victory Star.
     pub(crate) has_used_luxury_coin: [bool; 2],
+    /// Whether each player's Active Pokemon was damaged by an attack during this turn and during
+    /// the previous one. Wobbuffet's Reply Strongly reads the latter.
+    pub(crate) active_damaged_this_turn: [bool; 2],
+    pub(crate) active_damaged_last_turn: [bool; 2],
     /// How many of each player's own Pokemon have been Knocked Out so far this game. Kingambit's
     /// Overlord's Blade counts them; `points` cannot stand in for it because a Pokemon ex is
     /// worth 2 points but is still one knockout.
@@ -149,6 +153,8 @@ impl State {
             has_used_stadium: [false, false],
             has_used_victory_star: [false, false],
             has_used_luxury_coin: [false, false],
+            active_damaged_this_turn: [false, false],
+            active_damaged_last_turn: [false, false],
             own_knockouts_this_game: [0, 0],
             pending_coin_reflip: None,
 
@@ -479,6 +485,15 @@ impl State {
 
     pub(crate) fn mark_luxury_coin_used(&mut self, player: usize) {
         self.has_used_luxury_coin[player] = true;
+    }
+
+    /// Test hook mirroring `set_points_gained_last_turn`.
+    pub fn set_active_damaged_last_turn(&mut self, player: usize, value: bool) {
+        self.active_damaged_last_turn[player] = value;
+    }
+
+    pub(crate) fn active_was_damaged_last_turn(&self, player: usize) -> bool {
+        self.active_damaged_last_turn[player]
     }
 
     /// Test hook mirroring `set_points_gained_last_turn`.

@@ -129,6 +129,15 @@ pub(crate) fn on_evolve(
     }
 
     match get_ability_mechanic(to_card) {
+        Some(AbilityMechanic::OpponentRedrawByRemainingPointsOnEvolve) => {
+            state.move_generation_stack.push((
+                actor,
+                vec![
+                    SimpleAction::OpponentRedrawByRemainingPoints,
+                    SimpleAction::Noop,
+                ],
+            ));
+        }
         Some(AbilityMechanic::RecoverToolsFromDiscardOnEvolve { count }) => {
             state.move_generation_stack.push((
                 actor,
@@ -795,11 +804,44 @@ fn get_ability_damage_reduction(
         _ => 0,
     };
 
+    // Unown's GUARD: works only alongside an Unown with a different Ability, and covers every one
+    // of that player's Pokemon.
+    let unown_reduction: u32 = state
+        .enumerate_in_play_pokemon(target_player)
+        .filter_map(|(_, pokemon)| match get_ability_mechanic(&pokemon.card) {
+            Some(AbilityMechanic::UnownDuo {
+                own_ability_title,
+                reduce_damage,
+                ..
+            }) if *reduce_damage > 0
+                && has_unown_with_other_ability(state, target_player, own_ability_title) =>
+            {
+                Some(*reduce_damage)
+            }
+            _ => None,
+        })
+        .sum();
+
     effect_reduction
         + arceus_reduction
         + attacker_type_reduction
         + full_hp_reduction
         + formation_reduction
+        + unown_reduction
+}
+
+/// Unown's GUARD and POWER: each needs *another* Unown in play whose Ability is not the same one.
+fn has_unown_with_other_ability(state: &State, player: usize, own_ability_title: &str) -> bool {
+    state.enumerate_in_play_pokemon(player).any(|(_, pokemon)| {
+        pokemon
+            .card
+            .get_ability()
+            .is_some_and(|ability| ability.title != own_ability_title)
+            && matches!(
+                get_ability_mechanic(&pokemon.card),
+                Some(AbilityMechanic::UnownDuo { .. } | AbilityMechanic::LookAtTopCard)
+            )
+    })
 }
 
 /// Whether `player` has Arceus or Arceus ex in play (Active or Benched).
@@ -1455,6 +1497,22 @@ fn calculate_type_boost_bonus(
     };
 
     let mut bonus = 0;
+
+    // Unown's POWER: works only alongside an Unown with a different Ability.
+    for (_, pokemon) in state.enumerate_in_play_pokemon(attacking_player) {
+        if let Some(AbilityMechanic::UnownDuo {
+            own_ability_title,
+            increase_damage,
+            ..
+        }) = get_ability_mechanic(&pokemon.card)
+        {
+            if *increase_damage > 0
+                && has_unown_with_other_ability(state, attacking_player, own_ability_title)
+            {
+                bonus += increase_damage;
+            }
+        }
+    }
 
     // Politoed's Lordly Cheering cares about what the attacker evolved from, not its type.
     let attacker_evolves_from = attacking_pokemon.card.get_evolves_from();
