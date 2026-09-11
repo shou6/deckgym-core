@@ -129,6 +129,19 @@ pub(crate) fn on_evolve(
     }
 
     match get_ability_mechanic(to_card) {
+        Some(AbilityMechanic::PreventAllDamageAndEffectsOnEvolve) => {
+            state.move_generation_stack.push((
+                actor,
+                vec![
+                    SimpleAction::ApplyCardEffectToSelf {
+                        in_play_idx,
+                        effect: CardEffect::PreventAllDamageAndEffects,
+                        duration: 1,
+                    },
+                    SimpleAction::Noop,
+                ],
+            ));
+        }
         Some(AbilityMechanic::DrawCardsOnEvolve { amount }) => {
             state.move_generation_stack.push((
                 actor,
@@ -749,7 +762,19 @@ fn get_ability_damage_reduction(
         _ => 0,
     };
 
-    effect_reduction + arceus_reduction + attacker_type_reduction
+    // Eiscue's Ice Face: only an undamaged Eiscue is wearing the ice, so this depends on the
+    // Pokémon's current HP rather than on the card alone.
+    let full_hp_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
+        Some(AbilityMechanic::ReduceDamageIfFullHp { amount })
+            if !receiving_pokemon.is_damaged() =>
+        {
+            debug!("Ice Face: Reducing damage by {}", amount);
+            *amount
+        }
+        _ => 0,
+    };
+
+    effect_reduction + arceus_reduction + attacker_type_reduction + full_hp_reduction
 }
 
 /// Whether `player` has Arceus or Arceus ex in play (Active or Benched).
@@ -1386,10 +1411,22 @@ fn calculate_type_boost_bonus(
 
     let mut bonus = 0;
 
+    // Politoed's Lordly Cheering cares about what the attacker evolved from, not its type.
+    let attacker_evolves_from = attacking_pokemon.card.get_evolves_from();
+
     // Check each Pokemon in play for type-boosting abilities
-    for (_, pokemon) in state.enumerate_in_play_pokemon(attacking_player) {
+    for (in_play_idx, pokemon) in state.enumerate_in_play_pokemon(attacking_player) {
         if let Some(mechanic) = get_ability_mechanic(&pokemon.card) {
             match mechanic {
+                AbilityMechanic::IncreaseDamageForEvolvesFromOnBench {
+                    pokemon_name,
+                    amount,
+                } if in_play_idx != 0
+                    && attacker_evolves_from.as_deref() == Some(pokemon_name.as_str()) =>
+                {
+                    debug!("Lordly Cheering: Increasing damage by {}", amount);
+                    bonus += amount;
+                }
                 AbilityMechanic::IncreaseDamageForTypeInPlay {
                     energy_type,
                     amount,

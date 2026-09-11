@@ -209,6 +209,18 @@ pub enum Mechanic {
         energies: Vec<EnergyType>,
         conditions: Vec<StatusCondition>,
     },
+    /// Kyogre's Tidal Blast: pay `energies` off this Pokémon, then spread `damage` over every
+    /// one of the opponent's Pokémon.
+    SelfDiscardEnergyAndDamageAllOpponent {
+        energies: Vec<EnergyType>,
+        damage: u32,
+    },
+    /// Rapid Strike Urshifu's Tornado Shot: pay `energies` off this Pokémon, and also hit 1 of
+    /// the opponent's Benched Pokémon (the attacker's choice) for `bench_damage`.
+    SelfDiscardEnergyAndChoiceBenchDamage {
+        energies: Vec<EnergyType>,
+        bench_damage: u32,
+    },
     SelfDiscardEnergyAndCardEffect {
         energies: Vec<EnergyType>,
         effect: CardEffect,
@@ -383,6 +395,11 @@ pub enum Mechanic {
     ExtraDamagePerOwnPoint {
         damage_per_point: u32,
     },
+    /// Hisuian Basculegion's Soul Counter: extra damage for each point the opponent scored
+    /// during their last turn (unlike `ExtraDamagePerOpponentPoint`, which counts the whole game).
+    ExtraDamagePerOpponentPointLastTurn {
+        damage_per: u32,
+    },
     ExtraDamagePerOpponentPoint {
         damage_per_point: u32,
     },
@@ -504,6 +521,28 @@ pub enum Mechanic {
     ExtraDamageIfUndamaged {
         extra_damage: u32,
     },
+    /// Araquanid's Dangerous Claws: extra damage when the opponent's Active Pokémon is a Basic
+    /// Pokémon.
+    ExtraDamageIfDefenderIsBasic {
+        extra_damage: u32,
+    },
+    /// Ludicolo's Rhythmic Steps and Luvdisc's Paired Tackle: extra damage when the attacker's
+    /// own hand holds exactly one of `hand_sizes` cards.
+    ExtraDamageIfHandSizeIs {
+        hand_sizes: Vec<usize>,
+        extra_damage: u32,
+    },
+    /// Team Rocket's Lapras's Ruthless Whirlpool: extra damage when this Pokémon has strictly
+    /// more Energy attached than the opponent's Active Pokémon.
+    ExtraDamageIfMoreEnergyThanDefender {
+        extra_damage: u32,
+    },
+    /// Wishiwashi ex's School Storm: like `ExtraDamagePerPokemonWithNameOnBench`, but the ex
+    /// counts alongside the Basic it evolves from ("your Benched Wishiwashi and Wishiwashi ex").
+    ExtraDamagePerPokemonWithNameOrExOnBench {
+        pokemon_name: String,
+        damage_per: u32,
+    },
     /// Regidrago's Draconic Slam: "If this Pokémon has damage on it, this attack does -100
     /// damage." The attack's `fixed_damage` is the undamaged-self base; `reduction` is subtracted
     /// (floored at 0) when the attacking Pokémon already has damage on it.
@@ -516,6 +555,20 @@ pub enum Mechanic {
     OptionalDiscardBenchedBasicForExtraDamage {
         energy_type: EnergyType,
         extra_damage: u32,
+    },
+    /// Gyarados's Wild Swing: "You may discard any number of your Benched [W] Pokémon. This
+    /// attack does `extra_damage` more damage for each Benched Pokémon you discarded in this
+    /// way." Every subset of the eligible Benched Pokémon is offered as a choice.
+    OptionalDiscardBenchedTypedForExtraDamage {
+        energy_type: EnergyType,
+        extra_damage: u32,
+    },
+    /// Slowking's Litter: "Discard up to `max` Pokémon Tool cards from your hand. This attack
+    /// does `damage_per` damage for each card you discarded in this way." Discarding nothing is
+    /// a legal choice, and then the attack does no damage at all.
+    OptionalDiscardToolsFromHandForDamage {
+        max: usize,
+        damage_per: u32,
     },
     ExtraDamageIfStage2OnBench {
         extra_damage: u32,

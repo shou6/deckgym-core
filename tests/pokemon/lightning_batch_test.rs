@@ -1,5 +1,5 @@
 use deckgym::{
-    actions::{Action, SimpleAction},
+    actions::Action,
     card_ids::CardId,
     database::get_card_by_enum,
     models::{EnergyType, PlayedCard},
@@ -378,5 +378,81 @@ fn test_toxtricity_vengeful_shock_adds_paralysis_after_a_knockout() {
     assert!(
         state.get_active(1).is_paralyzed(),
         "the defender should also be Paralyzed"
+    );
+}
+
+/// Team Rocket's Electrode's "Destiny Burst": "If this Pokémon is in the Active Spot and is
+/// Knocked Out by damage from an attack from your opponent's Pokémon, do 70 damage to the
+/// Attacking Pokémon." Greninja ex's Aqua Edge does 100, so the 70 HP Electrode faints and
+/// strikes back; the 200 HP variant survives and the ability stays quiet.
+#[test]
+fn test_team_rockets_electrode_destiny_burst() {
+    for (defender_hp, expected_attacker_hp) in [(70u32, 100u32), (200, 170)] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![PlayedCard::from_id(CardId::B1073GreninjaEx)
+                .with_energy(vec![EnergyType::Water, EnergyType::Water])],
+            vec![
+                played_card_with_base_hp(CardId::B4a020TeamRocketsElectrode, defender_hp, vec![]),
+                // A Benched Pokémon to promote into, so the K.O. does not end the game.
+                played_card_with_base_hp(CardId::A1033Charmander, 300, vec![]),
+            ],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        game.apply_action(&Action {
+            actor: 0,
+            action: attack_action(CardId::B1073GreninjaEx, 0),
+            is_stack: false,
+        });
+
+        assert_eq!(
+            game.get_state_clone().get_active(0).get_remaining_hp(),
+            expected_attacker_hp,
+            "Electrode with {defender_hp} HP",
+        );
+    }
+}
+
+/// Destiny Burst only fires from the Active Spot: the same Electrode is Knocked Out on the
+/// Bench by Alakazam's splash damage without striking back.
+#[test]
+fn test_team_rockets_electrode_destiny_burst_stays_quiet_on_the_bench() {
+    let mut game = get_initialized_game(0);
+    let mut state = game.get_state_clone();
+    state.set_board(
+        vec![played_card_with_base_hp(
+            CardId::A2b031Alakazam,
+            300,
+            vec![EnergyType::Psychic, EnergyType::Psychic],
+        )],
+        vec![
+            played_card_with_base_hp(CardId::A1033Charmander, 300, vec![]),
+            // 20 HP so Psychic Suppression's splash damage finishes it; the splash only
+            // reaches Benched Pokémon that have Energy attached.
+            played_card_with_base_hp(
+                CardId::B4a020TeamRocketsElectrode,
+                20,
+                vec![EnergyType::Lightning],
+            ),
+        ],
+    );
+    state.current_player = 0;
+    state.turn_count = 5;
+    game.set_state(state);
+
+    game.apply_action(&Action {
+        actor: 0,
+        action: attack_action(CardId::A2b031Alakazam, 0),
+        is_stack: false,
+    });
+
+    assert_eq!(
+        game.get_state_clone().get_active(0).get_remaining_hp(),
+        300,
+        "a Benched K.O. must not trigger Destiny Burst",
     );
 }

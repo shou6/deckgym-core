@@ -7,6 +7,10 @@ use crate::{
     State,
 };
 
+pub(crate) fn is_tool_card(card: &Card) -> bool {
+    matches!(card, Card::Trainer(t) if t.trainer_card_type == TrainerType::Tool)
+}
+
 pub(crate) fn ensure_tool_card(card: &Card) -> &TrainerCard {
     match card {
         Card::Trainer(trainer_card) => ensure_tool_trainer(trainer_card),

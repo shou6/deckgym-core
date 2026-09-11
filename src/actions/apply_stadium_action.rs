@@ -5,11 +5,12 @@ use crate::{
         apply_action_helpers::Mutation,
         shared_mutations::{pokemon_search_outcomes, pokemon_search_outcomes_by_type_for_player},
     },
-    models::{Card, EnergyType, TrainerType},
+    models::{Card, EnergyType},
     stadiums::{
         is_arcade_active, is_area_zero_active, is_fragrant_forest_active, is_kids_room_active,
         is_mesagoza_active, is_rainbow_cave_active,
     },
+    tools::is_tool_card,
     State,
 };
 
@@ -156,10 +157,6 @@ fn forecast_arcade_effect() -> Outcomes {
             }
         })
     })
-}
-
-fn is_tool_card(card: &Card) -> bool {
-    matches!(card, Card::Trainer(t) if t.trainer_card_type == TrainerType::Tool)
 }
 
 /// Kid's Room: switch the chosen hand card with a random Pokémon Tool card from the deck.

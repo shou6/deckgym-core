@@ -1,4 +1,10 @@
-use crate::{card_ids::CardId, effects::CardEffect, models::PlayedCard, tools::has_tool};
+use crate::{
+    actions::{abilities::AbilityMechanic, get_ability_mechanic},
+    card_ids::CardId,
+    effects::CardEffect,
+    models::PlayedCard,
+    tools::has_tool,
+};
 
 /// Some cards counterattack either because of RockyHelmet or because of their own ability.
 pub(crate) fn get_counterattack_damage(card: &PlayedCard) -> u32 {
@@ -33,6 +39,16 @@ pub(crate) fn get_counterattack_damage(card: &PlayedCard) -> u32 {
     }
 
     total_damage
+}
+
+/// Destiny Burst / Innards Out: a Pokémon that faints in the Active Spot from an opponent's
+/// attack hits the Attacking Pokémon back. Unlike `get_counterattack_damage` this only applies
+/// when the damage was lethal, so the caller must check the remaining HP first.
+pub(crate) fn get_knockout_counterattack_damage(card: &PlayedCard) -> u32 {
+    match get_ability_mechanic(&card.card) {
+        Some(AbilityMechanic::CounterattackDamageOnKnockout { amount }) => *amount,
+        _ => 0,
+    }
 }
 
 /// Check if the defending Pokemon should poison the attacker when damaged.

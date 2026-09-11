@@ -98,6 +98,10 @@ pub struct State {
     pub(crate) pending_coin_reflip: Option<PendingCoinReflip>,
     pub(crate) knocked_out_by_opponent_attack_this_turn: bool,
     pub(crate) knocked_out_by_opponent_attack_last_turn: bool,
+    /// Points each player scored during this turn and during their previous one. Hisuian
+    /// Basculegion's Soul Counter reads the latter.
+    pub(crate) points_gained_this_turn: [u8; 2],
+    pub(crate) points_gained_last_turn: [u8; 2],
     // Energy types of the Pokemon Knocked Out by an opponent's attack during that turn (e.g. for
     // Zarude's "Dark Vengeance", which only counts [D] Pokemon). A Knocked Out Fossil has no
     // energy type, so these can be empty while the flags above are true.
@@ -141,6 +145,8 @@ impl State {
 
             knocked_out_by_opponent_attack_this_turn: false,
             knocked_out_by_opponent_attack_last_turn: false,
+            points_gained_this_turn: [0; 2],
+            points_gained_last_turn: [0; 2],
             knocked_out_types_this_turn: BTreeSet::new(),
             knocked_out_types_last_turn: BTreeSet::new(),
             attack_name_used_this_turn: [None, None],
@@ -564,6 +570,14 @@ impl State {
             return;
         }
 
+        // Regice's Crystal Body: "Prevent all effects of attacks used by your opponent's Pokémon
+        // done to this Pokémon." Special Conditions are what attacks put on a defender, so the
+        // ability reads as immunity to them (damage is untouched).
+        if has_ability_mechanic(&pokemon.card, &AbilityMechanic::PreventAllAttackEffects) {
+            debug!("Crystal Body: Pokémon is immune to the effects of attacks");
+            return;
+        }
+
         // Steel Apron: "The [M] Pokémon this card is attached to ... can't be affected by any
         // Special Conditions." The immunity only applies to a [M] holder.
         if has_tool(pokemon, crate::card_ids::CardId::A4153SteelApron)
@@ -751,6 +765,15 @@ impl State {
     /// Used for testing Marshadow's Revenge attack and similar mechanics. The KO'd Pokemon's
     /// energy type is left unknown, so type-restricted mechanics (e.g. Zarude's Dark Vengeance)
     /// won't consider it; test those by playing out an actual KO.
+    /// Test hook mirroring `set_knocked_out_by_opponent_attack_last_turn`.
+    pub fn set_points_gained_last_turn(&mut self, player: usize, points: u8) {
+        self.points_gained_last_turn[player] = points;
+    }
+
+    pub(crate) fn points_gained_last_turn(&self, player: usize) -> u8 {
+        self.points_gained_last_turn[player]
+    }
+
     pub fn set_knocked_out_by_opponent_attack_last_turn(&mut self, value: bool) {
         self.knocked_out_by_opponent_attack_last_turn = value;
         if !value {

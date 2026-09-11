@@ -16,7 +16,7 @@ use crate::{
     },
     models::{Card, EnergyType},
     state::{PendingCoinReflip, State},
-    tools,
+    tools::{self, is_tool_card},
 };
 
 use super::{
@@ -183,6 +183,9 @@ pub fn forecast_action(state: &State, action: &Action) -> Outcomes {
         | SimpleAction::HealAllEeveeEvolutions
         | SimpleAction::DiscardFossil { .. }
         | SimpleAction::DiscardOwnBenchedThenDamage { .. }
+        | SimpleAction::DiscardOwnBenchedManyThenDamage { .. }
+        | SimpleAction::DiscardToolsFromHandThenDamage { .. }
+        | SimpleAction::ApplyCardEffectToSelf { .. }
         | SimpleAction::ReturnPokemonToHand { .. }
         | SimpleAction::ShuffleInPlayPokemonIntoDeck { .. }
         | SimpleAction::DiscardToolFromPokemon { .. }
@@ -463,6 +466,22 @@ fn apply_deterministic_action(state: &mut State, action: &Action) {
             in_play_idx,
             damage,
         } => apply_discard_own_benched_then_damage(action.actor, state, *in_play_idx, *damage),
+        SimpleAction::DiscardOwnBenchedManyThenDamage {
+            in_play_idxs,
+            damage,
+        } => apply_discard_own_benched_many_then_damage(action.actor, state, in_play_idxs, *damage),
+        SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
+            apply_discard_tools_from_hand_then_damage(action.actor, state, *count, *damage)
+        }
+        SimpleAction::ApplyCardEffectToSelf {
+            in_play_idx,
+            effect,
+            duration,
+        } => {
+            if let Some(pokemon) = state.in_play_pokemon[action.actor][*in_play_idx].as_mut() {
+                pokemon.add_effect(effect.clone(), *duration);
+            }
+        }
         SimpleAction::ReturnPokemonToHand { in_play_idx } => {
             apply_return_pokemon_to_hand(action.actor, state, *in_play_idx)
         }
@@ -667,6 +686,53 @@ fn apply_discard_own_benched_then_damage(
     damage: u32,
 ) {
     state.discard_from_play(acting_player, in_play_idx);
+    let opponent = (acting_player + 1) % 2;
+    state.move_generation_stack.push((
+        acting_player,
+        vec![SimpleAction::ApplyDamage {
+            attacking_ref: (acting_player, 0),
+            targets: vec![(damage, opponent, 0)],
+            is_from_active_attack: true,
+        }],
+    ));
+}
+
+/// Gyarados's Wild Swing: the slots are independent, so discarding several by index needs no
+/// re-indexing between them.
+fn apply_discard_own_benched_many_then_damage(
+    acting_player: usize,
+    state: &mut State,
+    in_play_idxs: &[usize],
+    damage: u32,
+) {
+    for in_play_idx in in_play_idxs {
+        state.discard_from_play(acting_player, *in_play_idx);
+    }
+    let opponent = (acting_player + 1) % 2;
+    state.move_generation_stack.push((
+        acting_player,
+        vec![SimpleAction::ApplyDamage {
+            attacking_ref: (acting_player, 0),
+            targets: vec![(damage, opponent, 0)],
+            is_from_active_attack: true,
+        }],
+    ));
+}
+
+/// Slowking's Litter: pay Tool cards out of hand for damage.
+fn apply_discard_tools_from_hand_then_damage(
+    acting_player: usize,
+    state: &mut State,
+    count: usize,
+    damage: u32,
+) {
+    for _ in 0..count {
+        let Some(pos) = state.hands[acting_player].iter().position(is_tool_card) else {
+            break;
+        };
+        let card = state.hands[acting_player].remove(pos);
+        state.discard_piles[acting_player].push(card);
+    }
     let opponent = (acting_player + 1) % 2;
     state.move_generation_stack.push((
         acting_player,

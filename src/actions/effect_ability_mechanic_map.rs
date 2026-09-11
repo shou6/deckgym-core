@@ -44,7 +44,13 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "As long as this Pokémon is in the Active Spot, your opponent can't play any Stadium cards from their hand.",
             AbilityMechanic::NoOpponentStadiumInActive,
         );
-        // map.insert("As long as this Pokémon is on your Bench, attacks used by your Pokémon that evolve from Poliwhirl do +40 damage to your opponent's Active Pokémon.", todo_implementation);
+        map.insert(
+            "As long as this Pokémon is on your Bench, attacks used by your Pokémon that evolve from Poliwhirl do +40 damage to your opponent's Active Pokémon.",
+            AbilityMechanic::IncreaseDamageForEvolvesFromOnBench {
+                pokemon_name: "Poliwhirl".to_string(),
+                amount: 40,
+            },
+        );
         map.insert(
             "As long as this Pokémon is on your Bench, prevent all damage done to this Pokémon by attacks.",
             AbilityMechanic::PreventDamageWhileBenched,
@@ -152,9 +158,19 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "If this Pokémon has any Energy attached, it has no Retreat Cost.",
             AbilityMechanic::NoRetreatIfHasEnergy,
         );
-        // map.insert("If this Pokémon has full HP, it takes -40 damage from attacks from your opponent's Pokémon.", todo_implementation);
+        map.insert(
+            "If this Pokémon has full HP, it takes -40 damage from attacks from your opponent's Pokémon.",
+            AbilityMechanic::ReduceDamageIfFullHp { amount: 40 },
+        );
         // map.insert("If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 10 damage to each of your opponent's Pokémon.", todo_implementation);
-        // map.insert("If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 50 damage to the Attacking Pokémon.", todo_implementation);
+        map.insert(
+            "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 50 damage to the Attacking Pokémon.",
+            AbilityMechanic::CounterattackDamageOnKnockout { amount: 50 },
+        );
+        map.insert(
+            "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 70 damage to the Attacking Pokémon.",
+            AbilityMechanic::CounterattackDamageOnKnockout { amount: 70 },
+        );
         // map.insert("If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, flip a coin. If heads, the Attacking Pokémon is Knocked Out.", todo_implementation);
         map.insert(
             "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, move all [F] Energy from this Pokémon to 1 of your Benched Pokémon.",
@@ -245,6 +261,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
         map.insert(
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may discard a random Energy from your opponent's Active Pokémon.",
             AbilityMechanic::DiscardRandomEnergyFromOpponentActiveOnEvolve,
+        );
+        map.insert(
+            "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may prevent all damage from—and effects of—attacks from your opponent's Pokémon done to this Pokémon until the end of your opponent's next turn.",
+            AbilityMechanic::PreventAllDamageAndEffectsOnEvolve,
         );
         map.insert(
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may draw 2 cards.",
@@ -417,7 +437,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Prevent all damage done to this Pokémon by attacks from your opponent's Pokémon ex.",
             AbilityMechanic::PreventAllDamageFromEx,
         );
-        // map.insert("Prevent all effects of attacks used by your opponent's Pokémon done to this Pokémon.", todo_implementation);
+        map.insert(
+            "Prevent all effects of attacks used by your opponent's Pokémon done to this Pokémon.",
+            AbilityMechanic::PreventAllAttackEffects,
+        );
         // map.insert("This Ability works if you have any Unown in play with an Ability other than GUARD. All of your Pokémon take -10 damage from attacks from your opponent's Pokémon.", todo_implementation);
         // map.insert("This Ability works if you have any Unown in play with an Ability other than POWER. Attacks used by your Pokémon do +10 damage to your opponent's Active Pokémon.", todo_implementation);
         map.insert(

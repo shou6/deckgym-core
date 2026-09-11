@@ -251,6 +251,14 @@ impl Card {
         CardId::from_card_id(self.get_id().as_str()).expect("Card ID should be valid")
     }
 
+    /// The name of the Pokémon this one evolves from, if any.
+    pub fn get_evolves_from(&self) -> Option<String> {
+        match self {
+            Card::Pokemon(pokemon_card) => pokemon_card.evolves_from.clone(),
+            _ => None,
+        }
+    }
+
     pub fn is_basic(&self) -> bool {
         match self {
             Card::Pokemon(pokemon_card) => pokemon_card.stage == BASIC_STAGE,

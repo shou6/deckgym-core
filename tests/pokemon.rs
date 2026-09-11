@@ -248,6 +248,7 @@ mod meowstic_test;
 mod meowth_carefree_steps_test;
 #[path = "pokemon/metal_batch_test.rs"]
 mod metal_batch_test;
+
 #[path = "pokemon/milotic_ex_aqua_charge_test.rs"]
 mod milotic_ex_aqua_charge_test;
 #[path = "pokemon/miraidon_ex_test.rs"]
@@ -382,6 +383,8 @@ mod wailord_ex_wondrous_waves_test;
 mod wailord_test;
 #[path = "pokemon/walking_wake_test.rs"]
 mod walking_wake_test;
+#[path = "pokemon/water_batch_test.rs"]
+mod water_batch_test;
 #[path = "pokemon/whiscash_test.rs"]
 mod whiscash_test;
 #[path = "pokemon/wugtrio_b2a_test.rs"]

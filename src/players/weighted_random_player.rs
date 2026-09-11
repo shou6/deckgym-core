@@ -71,6 +71,9 @@ fn get_weight(action: &SimpleAction) -> u32 {
         SimpleAction::HealAllEeveeEvolutions => 5,
         SimpleAction::DiscardFossil { .. } => 1, // Low weight to discard fossils
         SimpleAction::DiscardOwnBenchedThenDamage { .. } => 5, // Trading a Benched Pokemon for damage
+        SimpleAction::DiscardOwnBenchedManyThenDamage { .. } => 5,
+        SimpleAction::DiscardToolsFromHandThenDamage { .. } => 5,
+        SimpleAction::ApplyCardEffectToSelf { .. } => 8, // A free shield is usually worth taking
 
         SimpleAction::ReturnPokemonToHand { .. } => 5,
         SimpleAction::ShuffleInPlayPokemonIntoDeck { .. } => 5,

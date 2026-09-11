@@ -320,7 +320,9 @@ impl PlayedCard {
         self.effects.push((effect, duration));
     }
 
-    pub(crate) fn get_active_effects(&self) -> Vec<CardEffect> {
+    /// The effects currently on this Pokémon (duration not yet expired). Public so that the
+    /// wrapper's policy — and tests — can see what an attack left behind.
+    pub fn get_active_effects(&self) -> Vec<CardEffect> {
         self.effects
             .iter()
             .map(|(effect, _)| effect.clone())

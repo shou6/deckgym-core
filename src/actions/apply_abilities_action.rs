@@ -296,8 +296,23 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::CanEvolveOnFirstTurnIfActive => {
             panic!("CanEvolveOnFirstTurnIfActive is a passive ability")
         }
+        AbilityMechanic::CounterattackDamageOnKnockout { .. } => {
+            panic!("CounterattackDamageOnKnockout is a passive ability")
+        }
         AbilityMechanic::CounterattackDamage { .. } => {
             panic!("CounterattackDamage is a passive ability")
+        }
+        AbilityMechanic::ReduceDamageIfFullHp { .. } => {
+            panic!("ReduceDamageIfFullHp is a passive ability")
+        }
+        AbilityMechanic::PreventAllAttackEffects => {
+            panic!("PreventAllAttackEffects is a passive ability")
+        }
+        AbilityMechanic::IncreaseDamageForEvolvesFromOnBench { .. } => {
+            panic!("IncreaseDamageForEvolvesFromOnBench is a passive ability")
+        }
+        AbilityMechanic::PreventAllDamageAndEffectsOnEvolve => {
+            panic!("PreventAllDamageAndEffectsOnEvolve is triggered on evolve")
         }
         AbilityMechanic::PoisonAttackerOnDamaged => {
             panic!("PoisonAttackerOnDamaged is a passive ability")

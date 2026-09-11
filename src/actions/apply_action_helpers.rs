@@ -11,8 +11,9 @@ use crate::{
     card_ids::CardId,
     effects::TurnEffect,
     hooks::{
-        get_counterattack_damage, modify_damage, on_attack_knockout, on_end_turn, on_knockout,
-        should_poison_attacker, DamageModifierContext,
+        get_counterattack_damage, get_knockout_counterattack_damage, modify_damage,
+        on_attack_knockout, on_end_turn, on_knockout, should_poison_attacker,
+        DamageModifierContext,
     },
     models::{Card, StatusCondition, TrainerType},
     state::GameOutcome,
@@ -309,6 +310,8 @@ fn apply_pokemon_checkup(
     mutated_state.knocked_out_by_opponent_attack_this_turn = false;
     mutated_state.knocked_out_types_last_turn =
         std::mem::take(&mut mutated_state.knocked_out_types_this_turn);
+    mutated_state.points_gained_last_turn =
+        std::mem::take(&mut mutated_state.points_gained_this_turn);
 }
 
 fn finish_turn_after_checkup(state: &mut State, rng: &mut StdRng) {
@@ -578,6 +581,15 @@ pub(crate) fn handle_damage_only(
             }
         };
         let should_poison = should_poison_attacker(target_pokemon);
+        // Destiny Burst / Innards Out: the defender hits back as it faints. Measured here rather
+        // than from the knockout hook so that a retaliation K.O. is collected in the same pass as
+        // the K.O. that triggered it.
+        let knockout_counter_damage =
+            if target_pokemon.get_remaining_hp() == 0 && attacking_player != target_player {
+                get_knockout_counterattack_damage(target_pokemon)
+            } else {
+                0
+            };
 
         // Apply counterattack damage and poison
         if counter_damage > 0 {
@@ -588,6 +600,18 @@ pub(crate) fn handle_damage_only(
             debug!(
                 "Dealt {} counterattack damage to active Pokemon. Remaining HP: {}",
                 counter_damage,
+                attacking_pokemon.get_remaining_hp()
+            );
+        }
+
+        if knockout_counter_damage > 0 {
+            let attacking_pokemon = state.in_play_pokemon[attacking_player][0]
+                .as_mut()
+                .expect("Active Pokemon should be there");
+            attacking_pokemon.apply_damage(knockout_counter_damage);
+            debug!(
+                "Dealt {} knockout counterattack damage to active Pokemon. Remaining HP: {}",
+                knockout_counter_damage,
                 attacking_pokemon.get_remaining_hp()
             );
         }
@@ -690,6 +714,7 @@ pub(crate) fn handle_knockouts(
             let ko_initiator = (ko_receiver + 1) % 2;
             let points_won = ko_pokemon.card.get_knockout_points();
             state.points[ko_initiator] += points_won;
+            state.points_gained_this_turn[ko_initiator] += points_won;
             debug!(
                 "Pokemon {:?} fainted. Player {} won {} points for a total of {}",
                 ko_pokemon, ko_initiator, points_won, state.points[ko_initiator]
@@ -697,6 +722,7 @@ pub(crate) fn handle_knockouts(
             // Iris bonus: 1 extra point if Haxorus KOs opponent's Active Pokemon
             if iris_bonus_active && ko_pokemon_idx == 0 && ko_receiver != attacking_ref.0 {
                 state.points[ko_initiator] += 1;
+                state.points_gained_this_turn[ko_initiator] += 1;
                 debug!(
                     "Iris: Player {} gets 1 bonus point for Haxorus KO",
                     ko_initiator

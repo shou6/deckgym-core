@@ -1,3 +1,4 @@
+use crate::effects::CardEffect;
 use crate::models::{Attack, Card, EnergyType, StatusCondition, TrainerCard};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -150,6 +151,20 @@ pub enum SimpleAction {
         in_play_idx: usize,
         damage: u32,
     },
+    /// Gyarados's Wild Swing: discard any number of your own Benched Pokémon, then deal the
+    /// resulting damage to the opponent's Active Pokémon. One action for the same reason as
+    /// `DiscardOwnBenchedThenDamage`.
+    DiscardOwnBenchedManyThenDamage {
+        in_play_idxs: Vec<usize>,
+        damage: u32,
+    },
+    /// Slowking's Litter: discard `count` Pokémon Tool cards from your hand, then deal the
+    /// resulting damage. Which Tools go is not modeled — they are all just cards in hand — so
+    /// the first `count` of them are discarded.
+    DiscardToolsFromHandThenDamage {
+        count: usize,
+        damage: u32,
+    },
     /// Use an activated stadium effect (once per turn per player)
     UseStadium,
     /// Return a Pokemon in play to your hand (e.g., Ilima).
@@ -187,6 +202,13 @@ pub enum SimpleAction {
     /// the opponent's Active Pokémon (e.g. Poisoned and Burned together).
     ApplyStatusesToOpponentActive {
         conditions: Vec<StatusCondition>,
+    },
+    /// Samurott's Stance: shield one of your own Pokémon from the opponent's attacks until the
+    /// end of their next turn.
+    ApplyCardEffectToSelf {
+        in_play_idx: usize,
+        effect: CardEffect,
+        duration: u8,
     },
     Noop, // No operation, used to have the user say "no" to a question
 }
@@ -346,6 +368,22 @@ impl fmt::Display for SimpleAction {
                 damage,
             } => {
                 write!(f, "DiscardOwnBenchedThenDamage({in_play_idx}, {damage})")
+            }
+            SimpleAction::DiscardOwnBenchedManyThenDamage {
+                in_play_idxs,
+                damage,
+            } => {
+                write!(f, "DiscardOwnBenchedManyThenDamage({in_play_idxs:?}, {damage})")
+            }
+            SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
+                write!(f, "DiscardToolsFromHandThenDamage({count}, {damage})")
+            }
+            SimpleAction::ApplyCardEffectToSelf {
+                in_play_idx,
+                effect,
+                duration,
+            } => {
+                write!(f, "ApplyCardEffectToSelf({in_play_idx}, {effect:?}, {duration})")
             }
             SimpleAction::ReturnPokemonToHand { in_play_idx } => {
                 write!(f, "ReturnPokemonToHand({in_play_idx})")

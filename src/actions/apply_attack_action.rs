@@ -25,7 +25,7 @@ use crate::{
         to_playable_card,
     },
     models::{Attack, Card, EnergyType, StatusCondition, TrainerType},
-    tools::has_tool,
+    tools::{has_tool, is_tool_card},
     State,
 };
 
@@ -469,6 +469,18 @@ fn forecast_effect_attack_by_mechanic(
             energies.clone(),
             conditions.clone(),
         ),
+        Mechanic::SelfDiscardEnergyAndDamageAllOpponent { energies, damage } => {
+            self_discard_energy_and_damage_all_opponent(state, energies.clone(), *damage)
+        }
+        Mechanic::SelfDiscardEnergyAndChoiceBenchDamage {
+            energies,
+            bench_damage,
+        } => self_discard_energy_and_choice_bench_damage(
+            state,
+            attack.fixed_damage,
+            energies.clone(),
+            *bench_damage,
+        ),
         Mechanic::SelfDiscardEnergyAndCardEffect {
             energies,
             effect,
@@ -616,8 +628,39 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::ExtraDamageIfUndamaged { extra_damage } => {
             extra_damage_if_undamaged(state, attack.fixed_damage, *extra_damage)
         }
+        Mechanic::ExtraDamageIfDefenderIsBasic { extra_damage } => {
+            extra_damage_if_defender_is_basic(state, attack.fixed_damage, *extra_damage)
+        }
+        Mechanic::ExtraDamageIfHandSizeIs {
+            hand_sizes,
+            extra_damage,
+        } => extra_damage_if_hand_size_is(state, attack.fixed_damage, hand_sizes, *extra_damage),
+        Mechanic::ExtraDamageIfMoreEnergyThanDefender { extra_damage } => {
+            extra_damage_if_more_energy_than_defender(state, attack.fixed_damage, *extra_damage)
+        }
+        Mechanic::ExtraDamagePerPokemonWithNameOrExOnBench {
+            pokemon_name,
+            damage_per,
+        } => extra_damage_per_pokemon_with_name_or_ex_on_bench(
+            state,
+            attack.fixed_damage,
+            pokemon_name,
+            *damage_per,
+        ),
         Mechanic::ReducedDamageIfSelfDamaged { reduction } => {
             reduced_damage_if_self_damaged(state, attack.fixed_damage, *reduction)
+        }
+        Mechanic::OptionalDiscardBenchedTypedForExtraDamage {
+            energy_type,
+            extra_damage,
+        } => optional_discard_benched_typed_for_extra_damage(
+            state,
+            attack.fixed_damage,
+            *energy_type,
+            *extra_damage,
+        ),
+        Mechanic::OptionalDiscardToolsFromHandForDamage { max, damage_per } => {
+            optional_discard_tools_from_hand_for_damage(state, *max, *damage_per)
         }
         Mechanic::OptionalDiscardBenchedBasicForExtraDamage {
             energy_type,
@@ -983,6 +1026,11 @@ fn forecast_effect_attack_by_mechanic(
         ),
         Mechanic::CoinFlipToBlockAttackNextTurn => {
             coin_flip_to_block_attack_next_turn(attack.fixed_damage)
+        }
+        Mechanic::ExtraDamagePerOpponentPointLastTurn { damage_per } => {
+            let opponent = (state.current_player + 1) % 2;
+            let points = state.points_gained_last_turn(opponent) as u32;
+            active_damage_doutcome(attack.fixed_damage + points * damage_per)
         }
         Mechanic::DelayedSpotDamage { amount } => delayed_spot_damage(*amount),
         Mechanic::SelfDiscardAllEnergyAndDelayedKnockOut => {
@@ -2396,6 +2444,56 @@ fn self_discard_energy_and_inflict_status(
     })
 }
 
+/// Kyogre's Tidal Blast: the Energy is paid as a post-damage effect (like every other
+/// `SelfDiscardEnergy*` attack), so the board the damage lands on is the pre-attack one.
+fn self_discard_energy_and_damage_all_opponent(
+    state: &State,
+    to_discard: Vec<EnergyType>,
+    damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let targets: Vec<(u32, bool, usize)> = state
+        .enumerate_in_play_pokemon(opponent)
+        .map(|(in_play_idx, _)| (damage, true, in_play_idx))
+        .collect();
+    damage_effect_doutcome(targets, move |_, state, action| {
+        discard_requested_energy_from_active_best_effort(state, action.actor, &to_discard);
+    })
+}
+
+/// Rapid Strike Urshifu's Tornado Shot: `also_choice_bench_damage` plus the Energy payment. With
+/// an empty Bench there is nothing to choose, so only the Active Pokémon is hit.
+fn self_discard_energy_and_choice_bench_damage(
+    state: &State,
+    active_damage: u32,
+    to_discard: Vec<EnergyType>,
+    bench_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let choices: Vec<_> = state
+        .enumerate_bench_pokemon(opponent)
+        .map(|(in_play_idx, _)| SimpleAction::ApplyDamage {
+            attacking_ref: (state.current_player, 0),
+            targets: vec![
+                (active_damage, opponent, 0),
+                (bench_damage, opponent, in_play_idx),
+            ],
+            is_from_active_attack: true,
+        })
+        .collect();
+    if choices.is_empty() {
+        return active_damage_effect_doutcome(active_damage, move |_, state, action| {
+            discard_requested_energy_from_active_best_effort(state, action.actor, &to_discard);
+        });
+    }
+    AttackOutcomes::single_effect(move |_, state, action| {
+        discard_requested_energy_from_active_best_effort(state, action.actor, &to_discard);
+        state
+            .move_generation_stack
+            .push((action.actor, choices.clone()));
+    })
+}
+
 fn self_discard_energy_and_card_effect(
     fixed_damage: u32,
     to_discard: Vec<EnergyType>,
@@ -3386,6 +3484,65 @@ fn extra_damage_if_hurt(state: &State, base: u32, extra: u32, opponent: bool) ->
     }
 }
 
+/// Araquanid's Dangerous Claws: the bonus applies to Basic Pokémon only (stage 0).
+fn extra_damage_if_defender_is_basic(state: &State, base: u32, extra: u32) -> AttackOutcomes {
+    let defender = state.get_active((state.current_player + 1) % 2);
+    if defender.card.is_basic() {
+        active_damage_doutcome(base + extra)
+    } else {
+        active_damage_doutcome(base)
+    }
+}
+
+/// Ludicolo's Rhythmic Steps and Luvdisc's Paired Tackle: the hand is counted after the attack
+/// is declared, so the attacker's own hand is exactly what the player sees when choosing it.
+fn extra_damage_if_hand_size_is(
+    state: &State,
+    base: u32,
+    hand_sizes: &[usize],
+    extra: u32,
+) -> AttackOutcomes {
+    let hand_size = state.hands[state.current_player].len();
+    if hand_sizes.contains(&hand_size) {
+        active_damage_doutcome(base + extra)
+    } else {
+        active_damage_doutcome(base)
+    }
+}
+
+/// Team Rocket's Lapras's Ruthless Whirlpool: strictly more Energy than the defender, so an
+/// equal count is not enough.
+fn extra_damage_if_more_energy_than_defender(
+    state: &State,
+    base: u32,
+    extra: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let attached = state.get_active(state.current_player).attached_energy.len();
+    let defending = state.get_active(opponent).attached_energy.len();
+    if attached > defending {
+        active_damage_doutcome(base + extra)
+    } else {
+        active_damage_doutcome(base)
+    }
+}
+
+/// Wishiwashi ex's School Storm: counts Benched Pokémon named `pokemon_name` as well as its ex
+/// form, which the card spells out as a separate name.
+fn extra_damage_per_pokemon_with_name_or_ex_on_bench(
+    state: &State,
+    base: u32,
+    pokemon_name: &str,
+    damage_per: u32,
+) -> AttackOutcomes {
+    let ex_name = format!("{pokemon_name} ex");
+    let count = state
+        .enumerate_bench_pokemon(state.current_player)
+        .filter(|(_, p)| p.get_name() == pokemon_name || p.get_name() == ex_name)
+        .count();
+    active_damage_doutcome(base + (count as u32) * damage_per)
+}
+
 fn extra_damage_if_undamaged(state: &State, base: u32, extra: u32) -> AttackOutcomes {
     let attacker = state.get_active(state.current_player);
     if attacker.is_damaged() {
@@ -3410,6 +3567,72 @@ fn reduced_damage_if_self_damaged(state: &State, base: u32, reduction: u32) -> A
 /// Vespiquen ex - Chase Order: the attacker may discard 1 of its Benched Basic Pokémon of the
 /// given type to boost the damage. The choice is queued as a single action per option so that the
 /// boosted damage is applied in one go (damage modifiers must not run twice).
+/// Gyarados's Wild Swing: the attacker picks which of its Benched Pokémon of `energy_type` to
+/// trade in, so every subset is a choice (at most 2^3 with a full Bench).
+fn optional_discard_benched_typed_for_extra_damage(
+    state: &State,
+    base_damage: u32,
+    energy_type: EnergyType,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    if benched_indices_of_type(state, state.current_player, energy_type).is_empty() {
+        return active_damage_doutcome(base_damage);
+    }
+
+    AttackOutcomes::single_effect(move |_, state, action| {
+        let eligible = benched_indices_of_type(state, action.actor, energy_type);
+        let choices: Vec<SimpleAction> = (0..(1u32 << eligible.len()))
+            .map(|mask| {
+                let in_play_idxs: Vec<usize> = eligible
+                    .iter()
+                    .enumerate()
+                    .filter(|(bit, _)| mask & (1 << bit) != 0)
+                    .map(|(_, in_play_idx)| *in_play_idx)
+                    .collect();
+                SimpleAction::DiscardOwnBenchedManyThenDamage {
+                    damage: base_damage + extra_damage * in_play_idxs.len() as u32,
+                    in_play_idxs,
+                }
+            })
+            .collect();
+        state.move_generation_stack.push((action.actor, choices));
+    })
+}
+
+fn benched_indices_of_type(state: &State, player: usize, energy_type: EnergyType) -> Vec<usize> {
+    state
+        .enumerate_bench_pokemon(player)
+        .filter(|(_, pokemon)| pokemon.get_energy_type() == Some(energy_type))
+        .map(|(in_play_idx, _)| in_play_idx)
+        .collect()
+}
+
+/// Slowking's Litter: one choice per number of Tools paid, from 0 up to what the hand holds.
+fn optional_discard_tools_from_hand_for_damage(
+    state: &State,
+    max: usize,
+    damage_per: u32,
+) -> AttackOutcomes {
+    let tools_in_hand = state.hands[state.current_player]
+        .iter()
+        .filter(|card| is_tool_card(card))
+        .count();
+    let payable = tools_in_hand.min(max);
+    if payable == 0 {
+        return active_damage_doutcome(0);
+    }
+
+    AttackOutcomes::single_effect(move |_, state, action| {
+        let choices: Vec<SimpleAction> = (0..=payable)
+            .map(|count| SimpleAction::DiscardToolsFromHandThenDamage {
+                count,
+                damage: damage_per * count as u32,
+            })
+            .collect();
+        state.move_generation_stack.push((action.actor, choices));
+    })
+}
+
 fn optional_discard_benched_basic_for_extra_damage(
     state: &State,
     base_damage: u32,

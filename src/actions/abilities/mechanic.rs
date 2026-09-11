@@ -283,7 +283,36 @@ pub enum AbilityMechanic {
     CounterattackDamage {
         amount: u32,
     },
+    /// Team Rocket's Electrode's Destiny Burst and Pyukumuku's Innards Out: if this Pokémon is in
+    /// the Active Spot and is Knocked Out by damage from an opponent's attack, do `amount` damage
+    /// to the Attacking Pokémon. Passive; triggered from the damage path (see
+    /// `apply_damage_with_modifiers`) so that a retaliation K.O. is collected together with this
+    /// Pokémon's own.
+    CounterattackDamageOnKnockout {
+        amount: u32,
+    },
     PoisonAttackerOnDamaged,
+    /// Eiscue's Ice Face: "If this Pokémon has full HP, it takes -`amount` damage from attacks
+    /// from your opponent's Pokémon."
+    ReduceDamageIfFullHp {
+        amount: u32,
+    },
+    /// Regice's Crystal Body: "Prevent all effects of attacks used by your opponent's Pokémon
+    /// done to this Pokémon." Damage still lands; as with `PreventAllDamageAndEffects`, the
+    /// "effects" half is modeled as immunity to Special Conditions, which is what attacks in
+    /// this game put on a defender.
+    PreventAllAttackEffects,
+    /// Politoed's Lordly Cheering: "As long as this Pokémon is on your Bench, attacks used by
+    /// your Pokémon that evolve from `pokemon_name` do +`amount` damage to your opponent's
+    /// Active Pokémon."
+    IncreaseDamageForEvolvesFromOnBench {
+        pokemon_name: String,
+        amount: u32,
+    },
+    /// Samurott's Stance: "Once during your turn, when you play this Pokémon from your hand to
+    /// evolve 1 of your Pokémon, you may prevent all damage from—and effects of—attacks from
+    /// your opponent's Pokémon done to this Pokémon until the end of your opponent's next turn."
+    PreventAllDamageAndEffectsOnEvolve,
     /// Jellicent's Bouncy Body: if this Pokémon is in the Active Spot and is damaged by an attack
     /// from the opponent's Pokémon, its owner takes an Energy of `energy_type` from their Energy
     /// Zone and attaches it to 1 of their Benched Pokémon (their choice). Passive; triggered from
