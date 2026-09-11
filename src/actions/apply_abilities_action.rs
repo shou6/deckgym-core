@@ -255,6 +255,7 @@ fn forecast_ability_by_mechanic(
         }
         AbilityMechanic::AllowTwoTools => panic!("AllowTwoTools is a passive ability"),
         AbilityMechanic::HealBlock => panic!("HealBlock is a passive ability"),
+        AbilityMechanic::DoubleType { .. } => panic!("DoubleType is a passive ability"),
         AbilityMechanic::ImmuneToStatusCondition { .. } => {
             panic!("ImmuneToStatusCondition is a passive ability")
         }
@@ -459,7 +460,7 @@ fn heal_all_your_pokemon(amount: u32, energy_type: Option<EnergyType>) -> Outcom
     Outcomes::single_fn(move |_rng, state, action| {
         let blocked = state.healing_is_blocked();
         for pokemon in state.in_play_pokemon[action.actor].iter_mut().flatten() {
-            if energy_type.is_none_or(|t| pokemon.get_energy_type() == Some(t)) {
+            if energy_type.is_none_or(|t| pokemon.is_type(t)) {
                 pokemon.heal(amount, blocked);
             }
         }

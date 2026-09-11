@@ -699,7 +699,7 @@ fn apply_attach_tool(state: &mut State, actor: usize, in_play_idx: usize, tool_c
 
     // Steel Apron: "...recovers from all Special Conditions..." only for a [M] holder.
     if tools::has_tool(pokemon, crate::card_ids::CardId::A4153SteelApron)
-        && pokemon.get_energy_type() == Some(crate::models::EnergyType::Metal)
+        && pokemon.is_type(crate::models::EnergyType::Metal)
     {
         pokemon.cure_status_conditions();
     }

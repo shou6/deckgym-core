@@ -380,6 +380,9 @@ mod tinkaton_gigaton_hammer_test;
 mod toxtricity_ex_damaging_spark_test;
 #[path = "pokemon/typhlosion_fire_breath_test.rs"]
 mod typhlosion_fire_breath_test;
+#[path = "pokemon/urshifu_double_type_test.rs"]
+mod urshifu_double_type_test;
+
 #[path = "pokemon/ursaluna_guts_test.rs"]
 mod ursaluna_guts_test;
 #[path = "pokemon/vanilluxe_test.rs"]

@@ -63,7 +63,7 @@ pub(crate) fn get_knockout_splash_damage(card: &PlayedCard) -> u32 {
 /// Dark Pendant: the [D] holder was hit in the Active Spot, so the attacker shuffles a random
 /// card from hand back into their deck.
 pub(crate) fn should_bounce_attackers_hand_card(card: &PlayedCard) -> bool {
-    has_tool(card, CardId::A4154DarkPendant) && card.get_energy_type() == Some(EnergyType::Darkness)
+    has_tool(card, CardId::A4154DarkPendant) && card.is_type(EnergyType::Darkness)
 }
 
 /// Check if the defending Pokemon should poison the attacker when damaged.

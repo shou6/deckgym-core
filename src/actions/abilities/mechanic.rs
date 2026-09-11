@@ -324,6 +324,11 @@ pub enum AbilityMechanic {
     CannotAttackWithoutBenched {
         pokemon_names: Vec<String>,
     },
+    /// The Urshifu pair's Double Type: "As long as this Pokémon is in play, it is [X] and [Y]
+    /// type." Read by `PlayedCard::types`.
+    DoubleType {
+        energy_types: Vec<EnergyType>,
+    },
     /// Claydol's Heal Block: "Pokémon (both yours and your opponent's) can't be healed."
     /// Read by `State::healing_is_blocked`.
     HealBlock,

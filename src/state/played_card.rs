@@ -198,11 +198,34 @@ impl PlayedCard {
     }
 
     // Option because if playing an item card... (?)
-    pub(crate) fn get_energy_type(&self) -> Option<EnergyType> {
+    /// The type printed on the card. Use `is_type` to ask "is this Pokémon [X]?" - the Urshifu
+    /// pair count as two types while they are in play (see `types`).
+    pub(crate) fn printed_energy_type(&self) -> Option<EnergyType> {
         match &self.card {
             Card::Pokemon(pokemon_card) => Some(pokemon_card.energy_type),
             _ => None,
         }
+    }
+
+    /// Every type this Pokémon counts as. One for almost everything; Rapid Strike Urshifu is
+    /// [W] and [F], Single Strike Urshifu is [F] and [D].
+    pub(crate) fn types(&self) -> Vec<EnergyType> {
+        let mut types: Vec<EnergyType> = self.printed_energy_type().into_iter().collect();
+        if let Some(crate::actions::abilities::AbilityMechanic::DoubleType { energy_types }) =
+            crate::actions::get_ability_mechanic(&self.card)
+        {
+            for energy_type in energy_types {
+                if !types.contains(energy_type) {
+                    types.push(*energy_type);
+                }
+            }
+        }
+        types
+    }
+
+    /// Whether this Pokémon counts as `energy_type`.
+    pub(crate) fn is_type(&self, energy_type: EnergyType) -> bool {
+        self.types().contains(&energy_type)
     }
 
     /// Check if this Pokemon evolved from a specific Pokemon name
@@ -267,9 +290,7 @@ impl PlayedCard {
         // attachable to anything, but their HP bonus is gated by the holder).
         if has_tool(self, CardId::A2147GiantCape) {
             effective_hp += 20;
-        } else if has_tool(self, CardId::A3147LeafCape)
-            && self.get_energy_type() == Some(EnergyType::Grass)
-        {
+        } else if has_tool(self, CardId::A3147LeafCape) && self.is_type(EnergyType::Grass) {
             // Leaf Cape: "The [G] Pokémon this card is attached to gets +30 HP."
             effective_hp += 30;
         } else if has_tool(self, CardId::B3b065ElegantCape)

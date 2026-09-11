@@ -514,6 +514,18 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             },
         );
         map.insert(
+            "As long as this Pokémon is in play, it is [W] and [F] type.",
+            AbilityMechanic::DoubleType {
+                energy_types: vec![EnergyType::Water, EnergyType::Fighting],
+            },
+        );
+        map.insert(
+            "As long as this Pokémon is in play, it is [F] and [D] type.",
+            AbilityMechanic::DoubleType {
+                energy_types: vec![EnergyType::Fighting, EnergyType::Darkness],
+            },
+        );
+        map.insert(
             "Pokémon (both yours and your opponent's) can't be healed.",
             AbilityMechanic::HealBlock,
         );

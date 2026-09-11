@@ -823,7 +823,7 @@ pub(crate) fn handle_knockouts(
         if is_from_active_attack && ko_receiver != attacking_ref.0 {
             let ko_pokemon_type = state.in_play_pokemon[ko_receiver][ko_pokemon_idx]
                 .as_ref()
-                .and_then(|pokemon| pokemon.get_energy_type());
+                .and_then(|pokemon| pokemon.printed_energy_type());
             state.record_knocked_out_by_opponent_attack(ko_pokemon_type);
         }
 
