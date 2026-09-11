@@ -129,6 +129,15 @@ pub(crate) fn on_evolve(
     }
 
     match get_ability_mechanic(to_card) {
+        Some(AbilityMechanic::RecoverToolsFromDiscardOnEvolve { count }) => {
+            state.move_generation_stack.push((
+                actor,
+                vec![
+                    SimpleAction::RecoverToolsFromDiscard { count: *count },
+                    SimpleAction::Noop,
+                ],
+            ));
+        }
         Some(AbilityMechanic::PreventAllDamageAndEffectsOnEvolve) => {
             state.move_generation_stack.push((
                 actor,

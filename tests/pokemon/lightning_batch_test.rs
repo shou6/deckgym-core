@@ -1,5 +1,5 @@
 use deckgym::{
-    actions::Action,
+    actions::{Action, SimpleAction},
     card_ids::CardId,
     database::get_card_by_enum,
     models::{EnergyType, PlayedCard},
@@ -455,4 +455,66 @@ fn test_team_rockets_electrode_destiny_burst_stays_quiet_on_the_bench() {
         300,
         "a Benched K.O. must not trigger Destiny Burst",
     );
+}
+
+/// Alolan Raichu's "Surge Surfer": "If a Stadium is in play, this Pokémon has no Retreat Cost."
+/// Its printed cost is 2, so with no Stadium and no Energy it cannot move.
+#[test]
+fn test_alolan_raichu_surge_surfer_needs_a_stadium() {
+    for with_stadium in [true, false] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![
+                PlayedCard::from_id(CardId::B2050AlolanRaichu),
+                PlayedCard::from_id(CardId::A1033Charmander),
+            ],
+            vec![PlayedCard::from_id(CardId::A1001Bulbasaur)],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        if with_stadium {
+            state.active_stadium = Some(get_card_by_enum(CardId::B2153TrainingArea));
+            state.active_stadium_owner = Some(1);
+        }
+        game.set_state(state);
+
+        let (_, actions) = game.get_state_clone().generate_possible_actions();
+        let can_retreat = actions
+            .iter()
+            .any(|a| matches!(a.action, SimpleAction::Retreat(_)));
+        assert_eq!(
+            can_retreat, with_stadium,
+            "stadium in play = {with_stadium}"
+        );
+    }
+}
+
+/// Boltund's "Defiant Spark": 70 damage for [L][C][C], "If this Pokémon has damage on it, this
+/// attack can be used for 1 [L] Energy."
+#[test]
+fn test_boltund_defiant_spark_is_cheap_when_hurt() {
+    for (damage_on_self, expected) in [(10u32, true), (0, false)] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![PlayedCard::from_id(CardId::A4a031Boltund)
+                .with_energy(vec![EnergyType::Lightning])
+                .with_damage(damage_on_self)],
+            vec![played_card_with_base_hp(
+                CardId::A1033Charmander,
+                300,
+                vec![],
+            )],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        let (_, actions) = game.get_state_clone().generate_possible_actions();
+        let can_attack = actions
+            .iter()
+            .any(|a| matches!(&a.action, SimpleAction::Attack(attack) if attack.title == "Defiant Spark"));
+        assert_eq!(can_attack, expected, "{damage_on_self} damage on Boltund");
+    }
 }

@@ -669,3 +669,87 @@ fn test_falinks_formation_softens_incoming_damage() {
         );
     }
 }
+
+/// Hippowdon's "Crashing Fangs": 100 damage, "Flip a coin. If tails, during your next turn, this
+/// Pokémon can't attack." Same shape as Origin Forme Dialga's Time Mash.
+#[test]
+fn test_hippowdon_crashing_fangs_locks_itself_on_tails() {
+    let mut locked = 0;
+    let seed_count = 24u64;
+    for seed in 0..seed_count {
+        let mut game = get_initialized_game(seed);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![
+                PlayedCard::from_id(CardId::B1129Hippowdon).with_energy(vec![
+                    EnergyType::Fighting,
+                    EnergyType::Fighting,
+                    EnergyType::Colorless,
+                ]),
+            ],
+            vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        game.apply_action(&Action {
+            actor: 0,
+            action: attack_action(CardId::B1129Hippowdon, 0),
+            is_stack: false,
+        });
+
+        let state = game.get_state_clone();
+        assert_eq!(
+            state.get_active(1).get_remaining_hp(),
+            200,
+            "100 damage whichever way the coin lands (seed {seed})",
+        );
+        if state
+            .get_active(0)
+            .get_active_effects()
+            .iter()
+            .any(|e| matches!(e, deckgym::effects::CardEffect::CannotAttack))
+        {
+            locked += 1;
+        }
+    }
+    assert!(
+        locked > 0 && locked < seed_count,
+        "the lock should follow a coin flip, not always or never (locked {locked}/{seed_count})",
+    );
+}
+
+/// Ting-Lu's "Arrogant Impact": 130 damage, "If this Pokémon's remaining HP is 60 or less, this
+/// attack does nothing."
+#[test]
+fn test_ting_lu_arrogant_impact_needs_a_healthy_ting_lu() {
+    for (damage_on_self, expected_hp) in [(0u32, 170u32), (60, 300)] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![PlayedCard::from_id(CardId::B2a062TingLu)
+                .with_energy(vec![
+                    EnergyType::Fighting,
+                    EnergyType::Fighting,
+                    EnergyType::Fighting,
+                ])
+                .with_damage(damage_on_self)],
+            vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        game.apply_action(&Action {
+            actor: 0,
+            action: attack_action(CardId::B2a062TingLu, 0),
+            is_stack: false,
+        });
+        assert_eq!(
+            game.get_state_clone().get_active(1).get_remaining_hp(),
+            expected_hp,
+            "Ting-Lu carrying {damage_on_self} damage (120 HP printed)",
+        );
+    }
+}

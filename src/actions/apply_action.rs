@@ -37,10 +37,11 @@ use super::{
 pub fn apply_action(rng: &mut StdRng, state: &mut State, action: &Action) {
     let outcomes = forecast_action(state, action);
 
-    // Victini's Victory Star: if this is an eligible [R] coin-flip attack, sample the coins now
-    // but park the result instead of committing it, and let the player choose whether to re-flip.
-    if let Some(pending) = maybe_defer_for_victory_star(rng, state, action, &outcomes) {
-        let victini_idx = pending.victini_idx;
+    // Victini's Victory Star and Gholdengo's Luxury Coin: if this is an eligible coin-flip
+    // action, sample the coins now but park the result instead of committing it, and let the
+    // player choose whether to re-flip.
+    if let Some(pending) = maybe_defer_for_coin_reflip(rng, state, action, &outcomes) {
+        let ability_idx = pending.ability_idx;
         let actor = pending.actor;
         state.set_pending_coin_reflip(pending);
         state.move_generation_stack.push((
@@ -48,7 +49,7 @@ pub fn apply_action(rng: &mut StdRng, state: &mut State, action: &Action) {
             vec![
                 SimpleAction::Noop,
                 SimpleAction::UseAbility {
-                    in_play_idx: victini_idx,
+                    in_play_idx: ability_idx,
                 },
             ],
         ));
@@ -69,44 +70,45 @@ pub fn apply_action(rng: &mut StdRng, state: &mut State, action: &Action) {
 /// coins so the player is choosing with knowledge of the result (as the real card allows).
 ///
 /// Returns `None` — meaning "resolve normally" — unless all of the following hold:
-///   - the action is an `Attack` that is not itself a stacked follow-up,
-///   - the attacking Pokémon is `[R]` (Fire),
-///   - the attack's outcomes actually involve coin flips,
-///   - the acting player has an unused Victini in play,
-///   - no reflip decision is already pending.
-fn maybe_defer_for_victory_star(
+///   - the action is not itself a stacked follow-up and its outcomes involve coin flips,
+///   - no reflip decision is already pending,
+///   - and either
+///       - Victini's Victory Star: the action is an `Attack` by a `[R]` (Fire) Pokémon and the
+///         acting player has an unused Victini in play, or
+///       - Gholdengo's Luxury Coin: the action plays a Trainer card and the acting player has an
+///         unused Gholdengo in play.
+fn maybe_defer_for_coin_reflip(
     rng: &mut StdRng,
     state: &State,
     action: &Action,
     outcomes: &Outcomes,
 ) -> Option<PendingCoinReflip> {
-    let attack = match &action.action {
-        SimpleAction::Attack(attack) if !action.is_stack => attack,
+    if action.is_stack || state.pending_coin_reflip.is_some() || !outcomes.has_coin_flips() {
+        return None;
+    }
+    let ability_idx = match &action.action {
+        SimpleAction::Attack(_) => {
+            let attacker_is_fire = state.in_play_pokemon[action.actor][0]
+                .as_ref()
+                .and_then(|pokemon| pokemon.card.get_type())
+                .is_some_and(|energy_type| energy_type == EnergyType::Fire);
+            if !attacker_is_fire {
+                return None;
+            }
+            state.available_victory_star_idx(action.actor)?
+        }
+        SimpleAction::Play { .. } => state.available_luxury_coin_idx(action.actor)?,
         _ => return None,
     };
-    if state.pending_coin_reflip.is_some() {
-        return None;
-    }
-    if !outcomes.has_coin_flips() {
-        return None;
-    }
-    let attacker_is_fire = state.in_play_pokemon[action.actor][0]
-        .as_ref()
-        .and_then(|pokemon| pokemon.card.get_type())
-        .is_some_and(|energy_type| energy_type == EnergyType::Fire);
-    if !attacker_is_fire {
-        return None;
-    }
-    let victini_idx = state.available_victory_star_idx(action.actor)?;
 
     // Roll the coins now; the chosen branch's sequence is what the player sees and may reject.
     let original_flips = sample_coin_sequence(rng, outcomes)?;
 
     Some(PendingCoinReflip {
         actor: action.actor,
-        attack: attack.clone(),
+        action: action.action.clone(),
         original_flips,
-        victini_idx,
+        ability_idx,
     })
 }
 
@@ -130,17 +132,21 @@ pub(crate) fn resolve_pending_coin_reflip(
     pending: PendingCoinReflip,
     reflip: bool,
 ) {
-    let attack_action = Action {
+    let parked_action = Action {
         actor: pending.actor,
-        action: SimpleAction::Attack(pending.attack.clone()),
+        action: pending.action.clone(),
         is_stack: false,
     };
 
     if reflip {
-        state.mark_victory_star_used(pending.actor);
+        // Each ability is once per turn, so mark the one that was actually offered.
+        match pending.action {
+            SimpleAction::Play { .. } => state.mark_luxury_coin_used(pending.actor),
+            _ => state.mark_victory_star_used(pending.actor),
+        }
     }
 
-    let outcomes = forecast_action(state, &attack_action);
+    let outcomes = forecast_action(state, &parked_action);
     let (probabilities, mut lazy_mutations) = if reflip {
         // Fresh coins: resolve the re-forecast attack normally.
         outcomes.into_branches()
@@ -156,10 +162,10 @@ pub(crate) fn resolve_pending_coin_reflip(
         0
     } else {
         WeightedIndex::new(&probabilities)
-            .expect("attack outcomes should form a valid distribution")
+            .expect("parked outcomes should form a valid distribution")
             .sample(rng)
     };
-    lazy_mutations.remove(chosen_index)(rng, state, &attack_action);
+    lazy_mutations.remove(chosen_index)(rng, state, &parked_action);
 }
 
 /// This should be mostly a "router" function that calls the appropriate forecast function
@@ -186,6 +192,8 @@ pub fn forecast_action(state: &State, action: &Action) -> Outcomes {
         | SimpleAction::DiscardOwnBenchedManyThenDamage { .. }
         | SimpleAction::DiscardToolsFromHandThenDamage { .. }
         | SimpleAction::ApplyCardEffectToSelf { .. }
+        | SimpleAction::MoveEnergiesFromActive { .. }
+        | SimpleAction::RecoverToolsFromDiscard { .. }
         | SimpleAction::ReturnPokemonToHand { .. }
         | SimpleAction::ShuffleInPlayPokemonIntoDeck { .. }
         | SimpleAction::DiscardToolFromPokemon { .. }
@@ -472,6 +480,34 @@ fn apply_deterministic_action(state: &mut State, action: &Action) {
         } => apply_discard_own_benched_many_then_damage(action.actor, state, in_play_idxs, *damage),
         SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
             apply_discard_tools_from_hand_then_damage(action.actor, state, *count, *damage)
+        }
+        SimpleAction::RecoverToolsFromDiscard { count } => {
+            for _ in 0..*count {
+                let Some(pos) = state.discard_piles[action.actor]
+                    .iter()
+                    .position(is_tool_card)
+                else {
+                    break;
+                };
+                let card = state.discard_piles[action.actor].remove(pos);
+                state.hands[action.actor].push(card);
+            }
+        }
+        SimpleAction::MoveEnergiesFromActive {
+            to_in_play_idx,
+            energies,
+        } => {
+            let mut moved = vec![];
+            if let Some(active) = state.in_play_pokemon[action.actor][0].as_mut() {
+                for energy in energies {
+                    if let Some(pos) = active.attached_energy.iter().position(|e| e == energy) {
+                        moved.push(active.attached_energy.remove(pos));
+                    }
+                }
+            }
+            if let Some(target) = state.in_play_pokemon[action.actor][*to_in_play_idx].as_mut() {
+                target.attached_energy.extend(moved);
+            }
         }
         SimpleAction::ApplyCardEffectToSelf {
             in_play_idx,

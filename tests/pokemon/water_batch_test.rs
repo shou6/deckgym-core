@@ -787,3 +787,166 @@ fn test_hisuian_basculegion_soul_counter_answers_the_points() {
         );
     }
 }
+
+/// Tatsugiri's "Retreat Directive": "Your Active Dondozo has no Retreat Cost." The ability
+/// works from the Bench, and only for Dondozo (printed cost 3).
+#[test]
+fn test_tatsugiri_retreat_directive_frees_dondozo() {
+    for (bencher, expected) in [
+        (CardId::A2b021Tatsugiri, true),
+        (CardId::A1033Charmander, false),
+    ] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![
+                PlayedCard::from_id(CardId::A2b020Dondozo),
+                PlayedCard::from_id(bencher),
+            ],
+            vec![PlayedCard::from_id(CardId::A1053Squirtle)],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        let (_, actions) = game.get_state_clone().generate_possible_actions();
+        let can_retreat = actions
+            .iter()
+            .any(|a| matches!(a.action, SimpleAction::Retreat(_)));
+        assert_eq!(can_retreat, expected, "Benched {bencher:?}");
+    }
+}
+
+/// The directive names Dondozo: Tatsugiri does not free anything else.
+#[test]
+fn test_tatsugiri_retreat_directive_only_helps_dondozo() {
+    let mut game = get_initialized_game(0);
+    let mut state = game.get_state_clone();
+    state.set_board(
+        vec![
+            // Wartortle's printed Retreat Cost is 1, so a free retreat would show up here too.
+            PlayedCard::from_id(CardId::A1054Wartortle),
+            PlayedCard::from_id(CardId::A2b021Tatsugiri),
+        ],
+        vec![PlayedCard::from_id(CardId::A1053Squirtle)],
+    );
+    state.current_player = 0;
+    state.turn_count = 5;
+    game.set_state(state);
+
+    let (_, actions) = game.get_state_clone().generate_possible_actions();
+    assert!(
+        !actions
+            .iter()
+            .any(|a| matches!(a.action, SimpleAction::Retreat(_))),
+        "only Dondozo retreats for free",
+    );
+}
+
+/// Swanna's "Feathery Cyclone": 60 damage, "Move all Energy from this Pokémon to 1 of your
+/// Benched Pokémon." Every type goes, not just Water.
+#[test]
+fn test_swanna_feathery_cyclone_hands_off_every_energy() {
+    let mut game = get_initialized_game(0);
+    let mut state = game.get_state_clone();
+    state.set_board(
+        vec![
+            PlayedCard::from_id(CardId::A4063Swanna)
+                .with_energy(vec![EnergyType::Water, EnergyType::Colorless]),
+            PlayedCard::from_id(CardId::A1053Squirtle),
+        ],
+        vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+    );
+    state.current_player = 0;
+    state.turn_count = 5;
+    game.set_state(state);
+
+    game.apply_action(&Action {
+        actor: 0,
+        action: attack_action(CardId::A4063Swanna, 0),
+        is_stack: false,
+    });
+    resolve_stacked_actions(&mut game);
+
+    let state = game.get_state_clone();
+    assert_eq!(state.get_active(1).get_remaining_hp(), 240, "60 damage");
+    assert!(
+        state.get_active(0).attached_energy.is_empty(),
+        "Swanna keeps nothing",
+    );
+    let moved = &state.in_play_pokemon[0][1]
+        .as_ref()
+        .expect("the Benched Pokemon is there")
+        .attached_energy;
+    assert_eq!(moved.len(), 2, "both Energy land on the Bench: {moved:?}");
+}
+
+/// Regice's "Reflect Energy": 70 damage, "Move 2 random Energy from this Pokémon to 1 of your
+/// Benched Pokémon." Only 2 of the 3 move.
+#[test]
+fn test_regice_reflect_energy_moves_two() {
+    let mut game = get_initialized_game(0);
+    let mut state = game.get_state_clone();
+    state.set_board(
+        vec![
+            PlayedCard::from_id(CardId::B3045Regice).with_energy(vec![
+                EnergyType::Water,
+                EnergyType::Water,
+                EnergyType::Colorless,
+            ]),
+            PlayedCard::from_id(CardId::A1053Squirtle),
+        ],
+        vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+    );
+    state.current_player = 0;
+    state.turn_count = 5;
+    game.set_state(state);
+
+    game.apply_action(&Action {
+        actor: 0,
+        action: attack_action(CardId::B3045Regice, 0),
+        is_stack: false,
+    });
+    resolve_stacked_actions(&mut game);
+
+    let state = game.get_state_clone();
+    assert_eq!(state.get_active(1).get_remaining_hp(), 230, "70 damage");
+    assert_eq!(
+        state.get_active(0).attached_energy.len(),
+        1,
+        "1 of the 3 stays behind",
+    );
+    assert_eq!(
+        state.in_play_pokemon[0][1]
+            .as_ref()
+            .expect("the Benched Pokemon is there")
+            .attached_energy
+            .len(),
+        2,
+        "2 Energy move to the Bench",
+    );
+}
+
+/// Veluza's "Shedding Spiral": 90 damage for [W][C][C][C], "If you have no cards in your deck,
+/// this attack can be used for 1 [W] Energy."
+#[test]
+fn test_veluza_shedding_spiral_is_cheap_on_an_empty_deck() {
+    for (deck_cards, expected) in [(0usize, true), (1, false)] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![PlayedCard::from_id(CardId::B2a031Veluza).with_energy(vec![EnergyType::Water])],
+            vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+        );
+        state.decks[0].cards = vec![get_card_by_enum(CardId::A1053Squirtle); deck_cards];
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        let (_, actions) = game.get_state_clone().generate_possible_actions();
+        let can_attack = actions
+            .iter()
+            .any(|a| matches!(&a.action, SimpleAction::Attack(attack) if attack.title == "Shedding Spiral"));
+        assert_eq!(can_attack, expected, "deck of {deck_cards}");
+    }
+}

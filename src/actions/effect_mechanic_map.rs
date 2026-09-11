@@ -284,6 +284,15 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
     );
     // map.insert("Draw cards until you have the same number of cards in your hand as your opponent.", todo_implementation);
     map.insert(
+        "Flip a coin. If tails, during your next turn, this Pokémon can't attack.",
+        Mechanic::DamageAndCardEffectOnTails {
+            opponent: false,
+            effect: CardEffect::CannotAttack,
+            // 2 turns: this turn's remainder plus the attacker's next turn.
+            duration: 2,
+        },
+    );
+    map.insert(
         "During your next turn, this Pokémon can't attack.",
         Mechanic::DamageAndCardEffect {
             opponent: false,
@@ -1164,13 +1173,23 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             extra_damage: 70,
         },
     );
-    // map.insert("If this Pokémon has damage on it, this attack can be used for 1 [L] Energy.", todo_implementation);
+    map.insert(
+        "If this Pokémon has damage on it, this attack can be used for 1 [L] Energy.",
+        Mechanic::AlternativeCostIfSelfDamaged {
+            energy_type: EnergyType::Lightning,
+            amount: 1,
+        },
+    );
     map.insert(
         "If this Pokémon has damage on it, this attack does 40 more damage.",
         Mechanic::ExtraDamageIfHurt {
             extra_damage: 40,
             opponent: false,
         },
+    );
+    map.insert(
+        "If this Pokémon's remaining HP is 60 or less, this attack does nothing.",
+        Mechanic::NothingIfSelfHpAtMost { threshold: 60 },
     );
     map.insert(
         "If this Pokémon has damage on it, this attack does 50 more damage.",
@@ -1372,7 +1391,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         Mechanic::DevolveDefenderToHand,
     );
     map.insert("If your opponent's Pokémon is Knocked Out by damage from this attack, this Pokémon also does 50 damage to itself.", Mechanic::RecoilIfKo { self_damage: 50 });
-    // map.insert("Move all Energy from this Pokémon to 1 of your Benched Pokémon.", todo_implementation);
+    map.insert(
+        "Move all Energy from this Pokémon to 1 of your Benched Pokémon.",
+        Mechanic::MoveAllEnergyToBench,
+    );
     map.insert(
         "Move all [P] Energy from this Pokémon to 1 of your Benched Pokémon.",
         Mechanic::MoveAllEnergyTypeToBench {
@@ -2494,7 +2516,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             extra_damage: 70,
         },
     );
-    // map.insert("If you have no cards in your deck, this attack can be used for 1 [W] Energy.", todo_implementation);
+    map.insert(
+        "If you have no cards in your deck, this attack can be used for 1 [W] Energy.",
+        Mechanic::AlternativeCostIfDeckEmpty {
+            energy_type: EnergyType::Water,
+            amount: 1,
+        },
+    );
     map.insert(
         "If you played a Supporter card from your hand during this turn, this attack does 60 more damage.",
         Mechanic::ExtraDamageIfSupportPlayedThisTurn { extra_damage: 60 },
@@ -2856,7 +2884,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "If your opponent's Active Pokémon is Confused, this attack does 70 more damage.",
         Mechanic::ExtraDamageIfDefenderConfused { extra_damage: 70 },
     );
-    // map.insert("Move 2 random Energy from this Pokémon to 1 of your Benched Pokémon.", todo_implementation);
+    map.insert(
+        "Move 2 random Energy from this Pokémon to 1 of your Benched Pokémon.",
+        Mechanic::MoveRandomEnergyToBench { count: 2 },
+    );
     map.insert(
         "Reveal all of your Pokémon in play and in your hand that have the Puppy Pile attack, and this attack does 20 damage for each Pokémon you revealed in this way.",
         Mechanic::DamagePerOwnPokemonWithAttackName {

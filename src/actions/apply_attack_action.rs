@@ -280,6 +280,24 @@ fn forecast_effect_attack_by_mechanic(
         Mechanic::MoveAllEnergyTypeToBench { energy_type } => {
             move_all_energy_type_to_bench(state, attack, *energy_type)
         }
+        Mechanic::MoveAllEnergyToBench => move_energy_to_bench(attack.fixed_damage, None),
+        Mechanic::MoveRandomEnergyToBench { count } => {
+            move_energy_to_bench(attack.fixed_damage, Some(*count))
+        }
+        // The discount is applied where attacks are offered (see `alternative_attack_cost`);
+        // once the attack is used it is plain damage.
+        Mechanic::AlternativeCostIfSelfDamaged { .. }
+        | Mechanic::AlternativeCostIfDeckEmpty { .. } => {
+            active_damage_doutcome(attack.fixed_damage)
+        }
+        Mechanic::NothingIfSelfHpAtMost { threshold } => {
+            let attacker = state.get_active(state.current_player);
+            if attacker.get_remaining_hp() <= *threshold {
+                active_damage_doutcome(0)
+            } else {
+                active_damage_doutcome(attack.fixed_damage)
+            }
+        }
         Mechanic::MoveFixedEnergyTypeToBench {
             energy_type,
             amount,
@@ -552,6 +570,16 @@ fn forecast_effect_attack_by_mechanic(
             effect.clone(),
             *duration,
             *coin_flip,
+        ),
+        Mechanic::DamageAndCardEffectOnTails {
+            opponent,
+            effect,
+            duration,
+        } => damage_and_card_effect_on_tails_attack(
+            attack.fixed_damage,
+            *opponent,
+            effect.clone(),
+            *duration,
         ),
         Mechanic::CoinFlipNoDamageOrDamageAndCardEffect {
             opponent,
@@ -1659,6 +1687,49 @@ fn charge_energy_any_way_to_type(
         if !choices.is_empty() {
             state.move_generation_stack.push((action.actor, choices));
         }
+    })
+}
+
+/// Swanna's Feathery Cyclone (`count` = None: everything) and Regice's Reflect Energy
+/// (`count` = Some(2): a random pick). The Energy to move is drawn once, then the attacker
+/// chooses which Benched Pokémon receives it.
+fn move_energy_to_bench(damage: u32, count: Option<usize>) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |rng, state, action| {
+        let bench: Vec<usize> = state
+            .enumerate_bench_pokemon(action.actor)
+            .map(|(in_play_idx, _)| in_play_idx)
+            .collect();
+        if bench.is_empty() {
+            return; // Nowhere to move it.
+        }
+        let Some(active) = state.in_play_pokemon[action.actor][0].as_ref() else {
+            return;
+        };
+        let mut attached = active.attached_energy.clone();
+        let energies = match count {
+            None => attached,
+            Some(count) => {
+                let mut picked = vec![];
+                for _ in 0..count {
+                    if attached.is_empty() {
+                        break;
+                    }
+                    picked.push(attached.remove(rng.gen_range(0..attached.len())));
+                }
+                picked
+            }
+        };
+        if energies.is_empty() {
+            return;
+        }
+        let choices: Vec<SimpleAction> = bench
+            .into_iter()
+            .map(|to_in_play_idx| SimpleAction::MoveEnergiesFromActive {
+                to_in_play_idx,
+                energies: energies.clone(),
+            })
+            .collect();
+        state.move_generation_stack.push((action.actor, choices));
     })
 }
 
@@ -3078,6 +3149,30 @@ fn damage_and_card_effect_attack(
     } else {
         active_damage_effect_doutcome(damage, effect_on_target)
     }
+}
+
+/// Like `damage_and_card_effect_attack` with `coin_flip`, but the effect rides on tails.
+fn damage_and_card_effect_on_tails_attack(
+    damage: u32,
+    opponent: bool,
+    effect: CardEffect,
+    effect_duration: u8,
+) -> AttackOutcomes {
+    let effect_on_target = move |_: &mut StdRng, state: &mut State, action: &Action| {
+        let player = if opponent {
+            (action.actor + 1) % 2
+        } else {
+            action.actor
+        };
+        state
+            .get_active_mut(player)
+            .add_effect(effect.clone(), effect_duration);
+    };
+
+    AttackOutcomes::binary_coin(
+        active_damage_outcome(damage),
+        active_damage_effect_outcome(damage, effect_on_target),
+    )
 }
 
 fn coin_flip_no_damage_or_damage_and_card_effect_attack(

@@ -313,6 +313,30 @@ pub enum Mechanic {
     MoveAllEnergyTypeToBench {
         energy_type: EnergyType,
     },
+    /// Swanna's Feathery Cyclone: move every Energy on this Pokémon (any type) to 1 of your
+    /// Benched Pokémon.
+    MoveAllEnergyToBench,
+    /// Regice's Reflect Energy: move `count` random Energy from this Pokémon to 1 of your
+    /// Benched Pokémon.
+    MoveRandomEnergyToBench {
+        count: usize,
+    },
+    /// Ting-Lu's Arrogant Impact: the attack does nothing while this Pokémon is down to
+    /// `threshold` HP or less.
+    NothingIfSelfHpAtMost {
+        threshold: u32,
+    },
+    /// Boltund's Defiant Spark: "If this Pokémon has damage on it, this attack can be used for
+    /// `amount` [X] Energy." Only the cost changes; the damage is the attack's own.
+    AlternativeCostIfSelfDamaged {
+        energy_type: EnergyType,
+        amount: usize,
+    },
+    /// Veluza's Shedding Spiral: the same, but the discount needs an empty deck.
+    AlternativeCostIfDeckEmpty {
+        energy_type: EnergyType,
+        amount: usize,
+    },
     MoveFixedEnergyTypeToBench {
         energy_type: EnergyType,
         amount: u32,
@@ -445,6 +469,14 @@ pub enum Mechanic {
         effect: CardEffect,
         duration: u8,
         coin_flip: bool, // false = always apply, true = apply on heads
+    },
+    /// Origin Forme Dialga's Time Mash and Hippowdon's Crashing Fangs: the damage always lands,
+    /// and a *tails* leaves the effect behind. `DamageAndCardEffect`'s `coin_flip` applies the
+    /// effect on heads instead.
+    DamageAndCardEffectOnTails {
+        opponent: bool,
+        effect: CardEffect,
+        duration: u8,
     },
     CoinFlipNoDamageOrDamageAndCardEffect {
         opponent: bool,

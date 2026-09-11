@@ -314,6 +314,18 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::IncreaseDamageForEvolvesFromOnBench { .. } => {
             panic!("IncreaseDamageForEvolvesFromOnBench is a passive ability")
         }
+        AbilityMechanic::RecoverToolsFromDiscardOnEvolve { .. } => {
+            panic!("RecoverToolsFromDiscardOnEvolve is triggered on evolve")
+        }
+        AbilityMechanic::NoRetreatForYourActiveNamed { .. } => {
+            panic!("NoRetreatForYourActiveNamed is a passive ability")
+        }
+        AbilityMechanic::NoRetreatIfStadiumInPlay => {
+            panic!("NoRetreatIfStadiumInPlay is a passive ability")
+        }
+        AbilityMechanic::ReduceRetreatCostIfAnotherSameNameInPlay { .. } => {
+            panic!("ReduceRetreatCostIfAnotherSameNameInPlay is a passive ability")
+        }
         AbilityMechanic::PreventAllDamageAndEffectsOnEvolve => {
             panic!("PreventAllDamageAndEffectsOnEvolve is triggered on evolve")
         }
@@ -366,13 +378,13 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::HealAllYourPokemonDuringCheckup { .. } => {
             panic!("HealAllYourPokemonDuringCheckup is a passive ability triggered during Pokemon Checkup")
         }
-        AbilityMechanic::VictoryStarReflip => victory_star_reflip(),
+        AbilityMechanic::VictoryStarReflip | AbilityMechanic::LuxuryCoinReflip => coin_reflip(),
     }
 }
 
-/// Victini's Victory Star, chosen from the reflip prompt: discard the parked coin result and
-/// resolve the same attack again with fresh, independent coins.
-fn victory_star_reflip() -> Outcomes {
+/// Victini's Victory Star or Gholdengo's Luxury Coin, chosen from the reflip prompt: discard the
+/// parked coin result and resolve the same action again with fresh, independent coins.
+fn coin_reflip() -> Outcomes {
     Outcomes::single_fn(move |rng, state, _action| {
         if let Some(pending) = state.take_pending_coin_reflip() {
             crate::actions::resolve_pending_coin_reflip(rng, state, pending, true);

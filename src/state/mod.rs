@@ -13,7 +13,7 @@ use crate::{
     actions::{has_ability_mechanic, SimpleAction},
     deck::Deck,
     effects::TurnEffect,
-    models::{Attack, Card, EnergyType, StatusCondition},
+    models::{Card, EnergyType, StatusCondition},
     move_generation,
     stadiums::is_starting_plains_active,
     tools::has_tool,
@@ -46,15 +46,16 @@ pub struct EnergyZone {
 /// search-based players (ExpectiMiniMax, MCTS) that clone and memoize states.
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PendingCoinReflip {
-    /// The player who used the attack (and who may use Victory Star).
+    /// The player who took the action (and who may re-flip).
     pub actor: usize,
-    /// The attack that was used, so it can be re-forecast on either branch.
-    pub attack: Attack,
+    /// The action whose coins are parked - an attack (Victini's Victory Star) or a Trainer card
+    /// being played (Gholdengo's Luxury Coin) - so it can be re-forecast on either branch.
+    pub action: SimpleAction,
     /// The exact coin sequence that was originally flipped. Replayed verbatim if the player
     /// declines, so declining is a faithful "keep what happened" rather than a second draw.
     pub original_flips: Vec<bool>,
-    /// In-play index of the Victini offering the reflip.
-    pub victini_idx: usize,
+    /// In-play index of the Pokemon offering the reflip.
+    pub ability_idx: usize,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -91,6 +92,8 @@ pub struct State {
     // not per-Victini.
     #[serde(default)]
     pub(crate) has_used_victory_star: [bool; 2],
+    /// Gholdengo's Luxury Coin, the Trainer-card counterpart of Victory Star.
+    pub(crate) has_used_luxury_coin: [bool; 2],
     // Set when an eligible coin-flip attack has been flipped but not yet committed, while the
     // acting player decides whether to invoke Victory Star. Holds plain data only (no closures),
     // so `State` stays Clone/Hash/Eq for the search-based players.
@@ -141,6 +144,7 @@ impl State {
             has_retreated: false,
             has_used_stadium: [false, false],
             has_used_victory_star: [false, false],
+            has_used_luxury_coin: [false, false],
             pending_coin_reflip: None,
 
             knocked_out_by_opponent_attack_this_turn: false,
@@ -409,6 +413,7 @@ impl State {
         self.has_retreated = false;
         self.has_used_stadium[self.current_player] = false;
         self.has_used_victory_star[self.current_player] = false;
+        self.has_used_luxury_coin[self.current_player] = false;
     }
 
     /// Clear status conditions from energy-bearing Pokémon on a player's side.
@@ -454,6 +459,21 @@ impl State {
 
     pub(crate) fn mark_victory_star_used(&mut self, player: usize) {
         self.has_used_victory_star[player] = true;
+    }
+
+    pub(crate) fn available_luxury_coin_idx(&self, player: usize) -> Option<usize> {
+        if self.has_used_luxury_coin[player] {
+            return None;
+        }
+        self.enumerate_in_play_pokemon(player)
+            .find(|(_, pokemon)| {
+                has_ability_mechanic(&pokemon.card, &AbilityMechanic::LuxuryCoinReflip)
+            })
+            .map(|(idx, _)| idx)
+    }
+
+    pub(crate) fn mark_luxury_coin_used(&mut self, player: usize) {
+        self.has_used_luxury_coin[player] = true;
     }
 
     pub(crate) fn set_pending_will_first_heads(&mut self) {

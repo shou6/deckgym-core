@@ -7,7 +7,7 @@ mod apply_stadium_action;
 mod apply_trainer_action;
 pub(crate) mod attack_helpers;
 pub(crate) mod attack_outcome;
-mod attacks;
+pub(crate) mod attacks;
 mod effect_ability_mechanic_map;
 mod effect_mechanic_map;
 mod mutations;

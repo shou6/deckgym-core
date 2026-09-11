@@ -315,6 +315,23 @@ pub enum AbilityMechanic {
         pokemon_name: String,
         amount: u32,
     },
+    /// Galarian Perrserker's Dig Up: when this Pokémon evolves from hand, its owner may put
+    /// `count` Pokémon Tool cards from their discard pile into their hand.
+    RecoverToolsFromDiscardOnEvolve {
+        count: usize,
+    },
+    /// Tatsugiri's Retreat Directive: "Your Active `pokemon_name` has no Retreat Cost." Works
+    /// from anywhere in play, but only for the named Pokémon while it is Active.
+    NoRetreatForYourActiveNamed {
+        pokemon_name: String,
+    },
+    /// Alolan Raichu's Surge Surfer: "If a Stadium is in play, this Pokémon has no Retreat Cost."
+    NoRetreatIfStadiumInPlay,
+    /// Beldum's Conductive Body: "If you have another Pokémon with this name in play, this
+    /// Pokémon's Retreat Cost is `amount` less."
+    ReduceRetreatCostIfAnotherSameNameInPlay {
+        amount: u8,
+    },
     /// Samurott's Stance: "Once during your turn, when you play this Pokémon from your hand to
     /// evolve 1 of your Pokémon, you may prevent all damage from—and effects of—attacks from
     /// your opponent's Pokémon done to this Pokémon until the end of your opponent's next turn."
@@ -382,4 +399,8 @@ pub enum AbilityMechanic {
     /// generation, only pushed onto the move-generation stack by `apply_action` immediately
     /// after an eligible [R] attack's coins are flipped. See `PendingCoinReflip`.
     VictoryStarReflip,
+    /// Gholdengo's Luxury Coin: the Trainer-card counterpart of Victory Star. "Once during your
+    /// turn, when you flip any coins for an effect of your Trainer cards, you may ignore all
+    /// results of those coin flips and begin flipping those coins again."
+    LuxuryCoinReflip,
 }

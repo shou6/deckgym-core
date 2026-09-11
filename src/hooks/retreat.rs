@@ -71,6 +71,24 @@ pub(crate) fn get_retreat_cost_for(
         }) {
             return vec![];
         }
+        // Alolan Raichu - Surge Surfer: free while any Stadium is on the table.
+        if matches!(
+            get_ability_mechanic(&card.card),
+            Some(AbilityMechanic::NoRetreatIfStadiumInPlay)
+        ) && state.active_stadium.is_some()
+        {
+            return vec![];
+        }
+        // Tatsugiri - Retreat Directive frees its owner's Active, but only the named Pokemon.
+        if state.enumerate_in_play_pokemon(owner).any(|(_, pokemon)| {
+            matches!(
+                get_ability_mechanic(&pokemon.card),
+                Some(AbilityMechanic::NoRetreatForYourActiveNamed { pokemon_name })
+                    if *pokemon_name == card.get_name()
+            )
+        }) {
+            return vec![];
+        }
         let mut normal_cost = pokemon_card.retreat_cost.clone();
         let retreat_cost_increase: u8 = card
             .get_effective_card_effects()
@@ -141,6 +159,20 @@ pub(crate) fn get_retreat_cost_for(
         // Peculiar Plaza: Psychic Pokemon retreat cost is 2 less
         if let Some(energy_type) = card.get_energy_type() {
             to_subtract += get_peculiar_plaza_retreat_reduction(state, energy_type);
+        }
+
+        // Beldum - Conductive Body: cheaper while another Pokemon of the same name is in play.
+        if let Some(AbilityMechanic::ReduceRetreatCostIfAnotherSameNameInPlay { amount }) =
+            get_ability_mechanic(&card.card)
+        {
+            let name = card.get_name();
+            let same_name = state
+                .enumerate_in_play_pokemon(owner)
+                .filter(|(_, pokemon)| pokemon.get_name() == name)
+                .count();
+            if same_name > 1 {
+                to_subtract += *amount;
+            }
         }
 
         // Retreat Effects accumulate so we add them.

@@ -134,7 +134,14 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
                 amount: 20,
             },
         );
-        // map.insert("If a Stadium is in play, this Pokémon has no Retreat Cost.", todo_implementation);
+        map.insert(
+            "If a Stadium is in play, this Pokémon has no Retreat Cost.",
+            AbilityMechanic::NoRetreatIfStadiumInPlay,
+        );
+        map.insert(
+            "If you have another Beldum in play, this Pokémon's Retreat Cost is 2 less.",
+            AbilityMechanic::ReduceRetreatCostIfAnotherSameNameInPlay { amount: 2 },
+        );
         map.insert(
             "If any damage is done to this Pokémon by attacks, flip a coin. If heads, prevent that damage.",
             AbilityMechanic::CoinFlipToPreventDamage,
@@ -296,7 +303,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
                 amount: 60,
             },
         );
-        // map.insert("Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may put 2 random Pokémon Tool cards from your discard pile into your hand.", todo_implementation);
+        map.insert(
+            "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may put 2 random Pokémon Tool cards from your discard pile into your hand.",
+            AbilityMechanic::RecoverToolsFromDiscardOnEvolve { count: 2 },
+        );
         // map.insert("Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may put a Supporter card from your discard pile into your hand.", todo_implementation);
         map.insert(
             "Once during your turn, when you play this Pokémon from your hand to evolve 1 of your Pokémon, you may take a [R] Energy from your Energy Zone and attach it to your Active [R] Pokémon.",
@@ -523,7 +533,12 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "You must discard a card from your hand in order to use this Ability. Once during your turn, you may draw a card.",
             AbilityMechanic::DiscardFromHandToDrawCard,
         );
-        // map.insert("Your Active Dondozo has no Retreat Cost.", todo_implementation);
+        map.insert(
+            "Your Active Dondozo has no Retreat Cost.",
+            AbilityMechanic::NoRetreatForYourActiveNamed {
+                pokemon_name: "Dondozo".to_string(),
+            },
+        );
         map.insert(
             "Your Active Pokémon has no Retreat Cost.",
             AbilityMechanic::NoRetreatForYourActive,
@@ -614,6 +629,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
         map.insert(
             "Once during your turn, after you flip any coins for an attack of 1 of your [R] Pokémon, you may ignore all results of those coin flips and begin flipping those coins again. You can't use more than 1 Victory Star Ability each turn.",
             AbilityMechanic::VictoryStarReflip,
+        );
+        map.insert(
+            "Once during your turn, when you flip any coins for an effect of your Trainer cards, you may ignore all results of those coin flips and begin flipping those coins again. You can't use more than 1 Luxury Coin Ability each turn.",
+            AbilityMechanic::LuxuryCoinReflip,
         );
         map.insert(
             "Once during your turn, if this Pokémon is in the Active Spot, you may make your opponent's Active Pokémon Confused.",

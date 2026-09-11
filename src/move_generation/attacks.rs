@@ -1,8 +1,11 @@
 use crate::{
-    actions::{abilities::AbilityMechanic, has_ability_mechanic, SimpleAction},
+    actions::{
+        abilities::AbilityMechanic, attacks::Mechanic, has_ability_mechanic, SimpleAction,
+        EFFECT_MECHANIC_MAP,
+    },
     effects::CardEffect,
     hooks::{contains_energy, get_attack_cost},
-    models::{Attack, PlayedCard},
+    models::{Attack, EnergyType, PlayedCard},
     State,
 };
 
@@ -48,7 +51,9 @@ pub(crate) fn generate_attack_actions(state: &State) -> Vec<SimpleAction> {
             if restricted_attack_names.contains(&attack.title) {
                 continue;
             }
-            let modified_cost = get_attack_cost(&attack.energy_required, state, current_player);
+            let base_cost = alternative_attack_cost(&attack, state, current_player)
+                .unwrap_or_else(|| attack.energy_required.clone());
+            let modified_cost = get_attack_cost(&base_cost, state, current_player);
             if contains_energy(active_pokemon, &modified_cost, state, current_player) {
                 offered.push(attack.clone());
                 actions.push(SimpleAction::Attack(attack));
@@ -75,4 +80,27 @@ fn time_recall_attacks(state: &State, player: usize, active_pokemon: &PlayedCard
         .iter()
         .flat_map(|card| card.get_attacks())
         .collect()
+}
+
+/// Boltund's Defiant Spark and Veluza's Shedding Spiral: "this attack can be used for 1 [X]
+/// Energy" while a condition holds. Returns the discounted base cost, or `None` when the attack
+/// has no such clause (or the condition is not met). The usual cost modifiers still apply on top.
+fn alternative_attack_cost(
+    attack: &Attack,
+    state: &State,
+    player: usize,
+) -> Option<Vec<EnergyType>> {
+    let effect = attack.effect.as_deref()?;
+    let (energy_type, amount) = match EFFECT_MECHANIC_MAP.get(effect)? {
+        Mechanic::AlternativeCostIfSelfDamaged {
+            energy_type,
+            amount,
+        } if state.get_active(player).is_damaged() => (energy_type, amount),
+        Mechanic::AlternativeCostIfDeckEmpty {
+            energy_type,
+            amount,
+        } if state.decks[player].cards.is_empty() => (energy_type, amount),
+        _ => return None,
+    };
+    Some(vec![*energy_type; *amount])
 }

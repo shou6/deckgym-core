@@ -206,6 +206,10 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::PreventAllAttackEffects => false,
         AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { .. } => false,
         AbilityMechanic::IncreaseDamageForEvolvesFromOnBench { .. } => false,
+        AbilityMechanic::RecoverToolsFromDiscardOnEvolve { .. } => false,
+        AbilityMechanic::NoRetreatForYourActiveNamed { .. } => false,
+        AbilityMechanic::NoRetreatIfStadiumInPlay => false,
+        AbilityMechanic::ReduceRetreatCostIfAnotherSameNameInPlay { .. } => false,
         AbilityMechanic::PreventAllDamageAndEffectsOnEvolve => false,
         AbilityMechanic::PoisonAttackerOnDamaged => false,
         AbilityMechanic::AttachEnergyFromZoneToBenchedOnDamaged { .. } => false,
@@ -233,6 +237,7 @@ fn can_use_ability_by_mechanic(
         // Reactive: only offered via the move-generation stack right after an eligible [R]
         // coin-flip attack, never as a freely-selectable ability.
         AbilityMechanic::VictoryStarReflip => false,
+        AbilityMechanic::LuxuryCoinReflip => false,
     }
 }
 

@@ -203,6 +203,19 @@ pub enum SimpleAction {
     ApplyStatusesToOpponentActive {
         conditions: Vec<StatusCondition>,
     },
+    /// Galarian Perrserker's Dig Up: put `count` Pokémon Tool cards from your discard pile into
+    /// your hand. Which ones is not modeled - they are all just cards - so the oldest are taken,
+    /// mirroring the simplification in `DiscardRandomOpponentActiveEnergy`.
+    RecoverToolsFromDiscard {
+        count: usize,
+    },
+    /// Swanna's Feathery Cyclone and Regice's Reflect Energy: move the listed Energy off the
+    /// Active Pokémon onto one Benched Pokémon. The Energy is decided when the choice is built
+    /// (so a "random" pick is drawn once), and the choice itself is which Benched Pokémon.
+    MoveEnergiesFromActive {
+        to_in_play_idx: usize,
+        energies: Vec<EnergyType>,
+    },
     /// Samurott's Stance: shield one of your own Pokémon from the opponent's attacks until the
     /// end of their next turn.
     ApplyCardEffectToSelf {
@@ -377,6 +390,15 @@ impl fmt::Display for SimpleAction {
             }
             SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
                 write!(f, "DiscardToolsFromHandThenDamage({count}, {damage})")
+            }
+            SimpleAction::RecoverToolsFromDiscard { count } => {
+                write!(f, "RecoverToolsFromDiscard({count})")
+            }
+            SimpleAction::MoveEnergiesFromActive {
+                to_in_play_idx,
+                energies,
+            } => {
+                write!(f, "MoveEnergiesFromActive({to_in_play_idx}, {energies:?})")
             }
             SimpleAction::ApplyCardEffectToSelf {
                 in_play_idx,
