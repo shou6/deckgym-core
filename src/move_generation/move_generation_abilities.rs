@@ -159,6 +159,7 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::RecoverSupporterFromDiscardOnEvolve => false,
         AbilityMechanic::TakeItemsFromTopOnEvolve { .. } => false,
         AbilityMechanic::CannotAttackWithoutBenched { .. } => false,
+        AbilityMechanic::AllowTwoTools => false,
         AbilityMechanic::ImmuneToStatusCondition { .. } => false,
         AbilityMechanic::CoinFlipPoisonOpponentActive => !card.ability_used,
         AbilityMechanic::GatherTypedEnergyToSelf { .. } => !card.ability_used,

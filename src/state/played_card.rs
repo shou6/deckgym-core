@@ -34,7 +34,9 @@ pub struct PlayedCard {
     /// board composition for this Pokemon's owner changes.
     double_grass_active: bool,
     pub attached_energy: Vec<EnergyType>,
-    pub attached_tool: Option<Card>,
+    /// Pokémon Tools attached to this Pokémon. One for almost everything; Revavroom's Dual
+    /// Customization raises its own limit to 2 (see `PlayedCard::max_tools`).
+    pub attached_tools: Vec<Card>,
     pub played_this_turn: bool,
     pub moved_to_active_this_turn: bool,
     pub ability_used: bool,
@@ -72,7 +74,7 @@ impl PlayedCard {
             moved_to_active_this_turn: false,
             cards_behind,
 
-            attached_tool: None,
+            attached_tools: vec![],
             ability_used: false,
             poisoned: false,
             paralyzed: false,
@@ -132,8 +134,21 @@ impl PlayedCard {
     }
 
     pub fn with_tool(mut self, tool: Card) -> Self {
-        self.attached_tool = Some(tool);
+        self.attached_tools.push(tool);
         self
+    }
+
+    /// How many Pokémon Tools this Pokémon may carry. Revavroom's Dual Customization is the only
+    /// card that raises it.
+    pub fn max_tools(&self) -> usize {
+        if matches!(
+            crate::actions::get_ability_mechanic(&self.card),
+            Some(crate::actions::abilities::AbilityMechanic::AllowTwoTools)
+        ) {
+            2
+        } else {
+            1
+        }
     }
 
     pub fn get_id(&self) -> String {
@@ -308,8 +323,9 @@ impl PlayedCard {
         self.poisoned || self.paralyzed || self.asleep || self.burned || self.confused
     }
 
+    /// Whether this Pokémon cannot take another Tool.
     pub(crate) fn has_tool_attached(&self) -> bool {
-        self.attached_tool.is_some()
+        self.attached_tools.len() >= self.max_tools()
     }
 
     /// Duration means:

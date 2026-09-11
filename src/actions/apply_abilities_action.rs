@@ -252,6 +252,7 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::CannotAttackWithoutBenched { .. } => {
             panic!("CannotAttackWithoutBenched is a passive ability")
         }
+        AbilityMechanic::AllowTwoTools => panic!("AllowTwoTools is a passive ability"),
         AbilityMechanic::ImmuneToStatusCondition { .. } => {
             panic!("ImmuneToStatusCondition is a passive ability")
         }

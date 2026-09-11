@@ -1695,7 +1695,7 @@ fn tool_attached_cost(mut cost: Vec<EnergyType>, state: &State, player: usize) -
     let Some(active) = state.in_play_pokemon[player][0].as_ref() else {
         return cost;
     };
-    if active.attached_tool.is_none() {
+    if active.attached_tools.is_empty() {
         return cost;
     }
     let Some(AbilityMechanic::ReduceAttackCostIfToolAttached {

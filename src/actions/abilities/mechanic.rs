@@ -324,6 +324,9 @@ pub enum AbilityMechanic {
     CannotAttackWithoutBenched {
         pokemon_names: Vec<String>,
     },
+    /// Revavroom's Dual Customization: "This Pokémon may have up to 2 Pokémon Tool cards
+    /// attached to it." Read by `PlayedCard::max_tools`.
+    AllowTwoTools,
     /// Hoothoot's Insomnia: this Pokémon cannot be given `condition`. `ImmuneToStatusConditions`
     /// is the all-conditions version.
     ImmuneToStatusCondition {

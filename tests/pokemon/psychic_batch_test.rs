@@ -652,15 +652,15 @@ fn test_hoopa_mischievous_ring_strips_every_tool() {
 
     let state = game.get_state_clone();
     assert!(
-        state.get_active(1).attached_tool.is_none(),
+        state.get_active(1).attached_tools.is_empty(),
         "the Active Pokemon's Tool is gone",
     );
     assert!(
         state.in_play_pokemon[1][1]
             .as_ref()
             .expect("the Benched Pokemon is there")
-            .attached_tool
-            .is_none(),
+            .attached_tools
+            .is_empty(),
         "and the Benched one's too",
     );
     assert_eq!(state.decks[1].cards.len(), 2, "both Tools go into the deck");

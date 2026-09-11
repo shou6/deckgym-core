@@ -336,7 +336,10 @@ fn test_purrloin_playful_knockdown_strips_the_tool() {
     });
 
     assert!(
-        game.get_state_clone().get_active(1).attached_tool.is_none(),
+        game.get_state_clone()
+            .get_active(1)
+            .attached_tools
+            .is_empty(),
         "the Tool is knocked off",
     );
 }

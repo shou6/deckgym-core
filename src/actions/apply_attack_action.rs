@@ -1601,9 +1601,7 @@ fn forecast_effect_attack_by_mechanic(
                     let opponent = (action.actor + 1) % 2;
                     let mut tools = vec![];
                     for pokemon in state.in_play_pokemon[opponent].iter_mut().flatten() {
-                        if let Some(tool) = pokemon.attached_tool.take() {
-                            tools.push(tool);
-                        }
+                        tools.append(&mut pokemon.attached_tools);
                     }
                     if tools.is_empty() {
                         return;
@@ -3181,7 +3179,7 @@ fn discard_opponent_active_tools_before_damage(damage: u32) -> AttackOutcomes {
             let opponent = (action.actor + 1) % 2;
             if state.in_play_pokemon[opponent][0]
                 .as_ref()
-                .is_some_and(|pokemon| pokemon.attached_tool.is_some())
+                .is_some_and(|pokemon| !pokemon.attached_tools.is_empty())
             {
                 state.discard_tool(opponent, 0);
             }
@@ -4970,7 +4968,7 @@ fn devolve_defender_to_hand(damage: u32) -> AttackOutcomes {
         let evolution = defender.card.clone();
         let damage_counters = defender.get_damage_counters();
         let attached_energy = defender.attached_energy.clone();
-        let attached_tool = defender.attached_tool.clone();
+        let attached_tools = defender.attached_tools.clone();
         let mut remaining_behind = defender.cards_behind.clone();
         remaining_behind.pop();
 
@@ -4979,7 +4977,7 @@ fn devolve_defender_to_hand(damage: u32) -> AttackOutcomes {
         let mut devolved = to_playable_card(&underneath, true);
         devolved.cards_behind = remaining_behind;
         devolved.attached_energy = attached_energy;
-        devolved.attached_tool = attached_tool;
+        devolved.attached_tools = attached_tools;
         devolved.apply_damage(damage_counters);
         state.in_play_pokemon[opponent][0] = Some(devolved);
         state.hands[opponent].push(evolution);
@@ -5766,7 +5764,7 @@ fn extra_damage_if_defender_tool_attached(
     let opponent = (state.current_player + 1) % 2;
     let has_tool = state.in_play_pokemon[opponent][0]
         .as_ref()
-        .is_some_and(|defender| defender.attached_tool.is_some());
+        .is_some_and(|defender| !defender.attached_tools.is_empty());
     active_damage_doutcome(base_damage + if has_tool { extra_damage } else { 0 })
 }
 

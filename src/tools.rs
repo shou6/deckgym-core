@@ -94,11 +94,10 @@ pub fn tool_effects_equal(trainer_card: &TrainerCard, reference_tool_id: CardId)
 
 pub fn has_tool(played_card: &PlayedCard, reference_tool_id: CardId) -> bool {
     let reference_effect = tool_effect_text_from_card_id(reference_tool_id);
-    let Some(attached_tool) = &played_card.attached_tool else {
-        return false;
-    };
-    let trainer_card = ensure_tool_card(attached_tool);
-    trainer_card.effect == reference_effect
+    played_card
+        .attached_tools
+        .iter()
+        .any(|attached_tool| ensure_tool_card(attached_tool).effect == reference_effect)
 }
 
 pub(crate) fn enumerate_tool_choices<'a>(
@@ -110,7 +109,8 @@ pub(crate) fn enumerate_tool_choices<'a>(
     // Pokémon Tools can be attached to ANY Pokémon — the game never restricts attachment by
     // type or stage. Tools whose effect is type/stage-specific (Leaf Cape [G] +30 HP, Big Air
     // Balloon Stage-2 free retreat, Steel Apron [M] −10, etc.) gate the *effect* at its
-    // application site, not the attachment. The only attachment rule is one tool per Pokémon.
+    // application site, not the attachment. The only attachment rule is how many Tools a Pokémon
+    // may carry, which is 1 for everything except Revavroom (see `PlayedCard::max_tools`).
     state
         .enumerate_in_play_pokemon(actor)
         .filter(|(_, x)| !x.has_tool_attached())

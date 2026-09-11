@@ -2088,9 +2088,8 @@ fn elesa_effect(_: &mut StdRng, state: &mut State, _: &Action) {
     // their owner's hand.
     for player in 0..2 {
         for pokemon in state.in_play_pokemon[player].iter_mut().flatten() {
-            if let Some(tool) = pokemon.attached_tool.take() {
-                state.hands[player].push(tool);
-            }
+            let returned = std::mem::take(&mut pokemon.attached_tools);
+            state.hands[player].extend(returned);
         }
     }
 }

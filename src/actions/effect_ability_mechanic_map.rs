@@ -371,6 +371,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             },
         );
         map.insert(
+            "This Pokémon may have up to 2 Pokémon Tool cards attached to it.",
+            AbilityMechanic::AllowTwoTools,
+        );
+        map.insert(
             "This Pokémon can't be Asleep.",
             AbilityMechanic::ImmuneToStatusCondition {
                 condition: StatusCondition::Asleep,

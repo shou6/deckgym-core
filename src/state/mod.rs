@@ -720,9 +720,7 @@ impl State {
             .as_ref()
             .expect("There should be a Pokemon to discard");
         let mut cards_to_discard = ko_pokemon.cards_behind.clone();
-        if let Some(tool_card) = &ko_pokemon.attached_tool {
-            cards_to_discard.push(tool_card.clone());
-        }
+        cards_to_discard.extend(ko_pokemon.attached_tools.iter().cloned());
         cards_to_discard.push(ko_pokemon.card.clone());
         debug!("Discarding: {cards_to_discard:?}");
         self.discard_piles[ko_receiver].extend(cards_to_discard);
@@ -732,16 +730,14 @@ impl State {
         self.refresh_ally_hp_bonus_for_player(ko_receiver);
     }
 
-    /// Removes the attached tool from a Pokémon and puts the tool card into the discard pile.
+    /// Removes every attached Tool from a Pokémon and puts the cards into the discard pile.
+    /// Only Revavroom ever carries more than one.
     pub(crate) fn discard_tool(&mut self, player: usize, in_play_idx: usize) {
         let pokemon = self.in_play_pokemon[player][in_play_idx]
             .as_mut()
             .expect("Pokemon should be there if discarding tool");
-        let tool_card = pokemon
-            .attached_tool
-            .take()
-            .expect("Expected tool to be attached when discarding tool");
-        self.discard_piles[player].push(tool_card);
+        let tool_cards = std::mem::take(&mut pokemon.attached_tools);
+        self.discard_piles[player].extend(tool_cards);
     }
 
     pub(crate) fn discard_from_active(&mut self, actor: usize, to_discard: &[EnergyType]) {

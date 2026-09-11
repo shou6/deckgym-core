@@ -266,9 +266,9 @@ mod tests {
         let state = State::default();
         let card = get_card_by_enum(CardId::A1055Blastoise);
         let mut playable_card = to_playable_card(&card, false);
-        playable_card.attached_tool = Some(crate::database::get_card_by_enum(
+        playable_card.attached_tools = vec![crate::database::get_card_by_enum(
             CardId::A4a067InflatableBoat,
-        ));
+        )];
         let retreat_cost = get_retreat_cost(&state, &playable_card);
         assert_eq!(
             retreat_cost,

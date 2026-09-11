@@ -48,7 +48,7 @@ fn test_lum_berry_cures_at_the_end_of_the_turn() {
     let state = game.get_state_clone();
     assert!(!state.get_active(1).is_asleep(), "the Berry wakes it up");
     assert!(
-        state.get_active(1).attached_tool.is_none(),
+        state.get_active(1).attached_tools.is_empty(),
         "and is discarded",
     );
 }
@@ -96,7 +96,7 @@ fn test_sitrus_berry_heals_below_half() {
             "{damage} damage on a 120 HP Pokemon",
         );
         assert_eq!(
-            state.get_active(1).attached_tool.is_none(),
+            state.get_active(1).attached_tools.is_empty(),
             expect_heal,
             "the Berry is discarded only when it heals",
         );
@@ -300,8 +300,11 @@ fn test_memory_light_unlocks_the_previous_attacks() {
 
         let mut state = game.get_state_clone();
         if with_tool {
-            state.in_play_pokemon[0][0].as_mut().unwrap().attached_tool =
-                Some(get_card_by_enum(CardId::A4a068MemoryLight));
+            state.in_play_pokemon[0][0]
+                .as_mut()
+                .unwrap()
+                .attached_tools
+                .push(get_card_by_enum(CardId::A4a068MemoryLight));
         }
         // Enough Energy for either attack.
         state.in_play_pokemon[0][0]
