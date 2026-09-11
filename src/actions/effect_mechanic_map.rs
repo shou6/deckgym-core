@@ -250,7 +250,13 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "Discard the top 5 cards of each player's deck.",
         Mechanic::DamageAndDiscardBothDecks { discard_count: 5 },
     );
-    // map.insert("Discard the top card of your deck. If that card is a [F] Pokémon, this attack does 60 more damage.", todo_implementation);
+    map.insert(
+        "Discard the top card of your deck. If that card is a [F] Pokémon, this attack does 60 more damage.",
+        Mechanic::DiscardTopThenExtraDamageIfTypedPokemon {
+            energy_type: EnergyType::Fighting,
+            extra_damage: 60,
+        },
+    );
     map.insert(
         "Discard the top card of your opponent's deck.",
         Mechanic::DamageAndDiscardOpponentDeck { discard_count: 1 },
@@ -1405,7 +1411,14 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             name: "Rockruff".to_string(),
         },
     );
-    // map.insert("Reveal the top 3 cards of your deck. This attack does 60 damage for each Pokémon with a Retreat Cost of 3 or more you find there. Shuffle the revealed cards back into your deck.", todo_implementation);
+    map.insert(
+        "Reveal the top 3 cards of your deck. This attack does 60 damage for each Pokémon with a Retreat Cost of 3 or more you find there. Shuffle the revealed cards back into your deck.",
+        Mechanic::RevealTopThenDamagePerHeavyPokemon {
+            reveal: 3,
+            retreat_cost_at_least: 3,
+            damage_per: 60,
+        },
+    );
     // map.insert("Shuffle your hand into your deck. Draw a card for each card in your opponent's hand.", todo_implementation);
     map.insert(
         "Switch out your opponent's Active Pokémon to the Bench. (Your opponent chooses the new Active Pokémon.)",
@@ -1757,7 +1770,14 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         },
     );
     // map.insert("This attack does 20 damage to each of your opponent's Pokémon.", todo_implementation);
-    // map.insert("This attack does 20 damage to each of your opponent's Pokémon. During your next turn, this Pokémon's Wild Spin attack does +20 damage to each of your opponent's Pokémon.", todo_implementation);
+    map.insert(
+        "This attack does 20 damage to each of your opponent's Pokémon. During your next turn, this Pokémon's Wild Spin attack does +20 damage to each of your opponent's Pokémon.",
+        Mechanic::DamageAllOpponentPokemonAndBoostSelfAttack {
+            damage: 20,
+            attack_name: "Wild Spin".to_string(),
+            boost: 20,
+        },
+    );
     map.insert(
         "This attack does 20 more damage for each type of Energy attached to this Pokémon.",
         Mechanic::ExtraDamagePerEnergyType {
@@ -2131,7 +2151,7 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         },
     );
     // map.insert("Discard Water2 [W] Energy from this Pokémon. Your opponent's Active Pokémon is now Paralyzed.", todo_implementation);
-    // map.insert("Discard a Stadium in play.", todo_implementation);
+    map.insert("Discard a Stadium in play.", Mechanic::DiscardStadiumInPlay);
     map.insert(
         "During your next turn, attacks used by your Pokémon do +20 damage to your opponent's Active Pokémon.",
         Mechanic::DamageAndTurnEffect {
@@ -2247,7 +2267,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             extra_damage: 60,
         },
     );
-    // map.insert("If you have fewer Pokémon in play than your opponent, this attack does 80 more damage.", todo_implementation);
+    map.insert(
+        "If you have fewer Pokémon in play than your opponent, this attack does 80 more damage.",
+        Mechanic::ExtraDamageIfFewerPokemonInPlay { extra_damage: 80 },
+    );
     map.insert(
         "If your opponent has gotten exactly 1 points, this attack does 40 more damage.",
         Mechanic::ExtraDamageIfPointsExactly {
@@ -2560,7 +2583,10 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             include_own_bench: false,
         },
     );
-    // map.insert("Discard 2 random Energy from among the Energy attached to all of your Pokémon.", todo_implementation);
+    map.insert(
+        "Discard 2 random Energy from among the Energy attached to all of your Pokémon.",
+        Mechanic::DiscardRandomOwnEnergy { count: 2 },
+    );
     map.insert(
         "Discard Grass[G] Energy from this Pokémon. Your opponent's Active Pokémon is now Poisoned.",
         Mechanic::SelfDiscardEnergyAndInflictStatus {
@@ -2585,7 +2611,16 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
         "Discard the top card of your deck.",
         Mechanic::DiscardTopSelfDeck { count: 1 },
     );
-    // map.insert("During your next turn, attacks used by your [F] Pokémon do +30 damage to your opponent's Active Pokémon.", todo_implementation);
+    map.insert(
+        "During your next turn, attacks used by your [F] Pokémon do +30 damage to your opponent's Active Pokémon.",
+        Mechanic::DamageAndTurnEffect {
+            effect: TurnEffect::IncreasedDamageForType {
+                amount: 30,
+                energy_type: EnergyType::Fighting,
+            },
+            duration: 1,
+        },
+    );
     // map.insert("During your next turn, this Pokémon's Psych Up attack does +30 damage.", todo_implementation);
     // map.insert("During your opponent's next turn, they can't play any Pokémon from their hand to evolve their Pokémon.", todo_implementation);
     map.insert(
@@ -2971,6 +3006,25 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
     map.insert(
         "Discard the top card of your deck, and if that card is an Item, this attack does 20 more damage.",
         Mechanic::DiscardTopThenExtraDamageIfItem { extra_damage: 20 },
+    );
+    map.insert(
+        "If your opponent's Active Pokémon has “Team Rocket” in its name, this attack does 70 more damage.",
+        Mechanic::ExtraDamageIfDefenderNameContains {
+            name_part: "Team Rocket".to_string(),
+            extra_damage: 70,
+        },
+    );
+    map.insert(
+        "Switch in 1 of your opponent's Benched Pokémon to the Active Spot. If you do, this attack does 50 damage to the new Active Pokémon.",
+        Mechanic::DragOpponentBenchThenDamage { damage: 50 },
+    );
+    map.insert(
+        "1 of your opponent's Active Pokémon's attacks is chosen at random. During your opponent's next turn, that Pokémon can't use the chosen attack.",
+        Mechanic::LockRandomDefenderAttack { duration: 1 },
+    );
+    map.insert(
+        "Discard all Energy from this Pokémon. Choose a spot from among your opponent's Active Spot and Bench. At the end of your opponent's next turn, Knock Out the Pokémon in the spot you chose.",
+        Mechanic::SelfDiscardAllEnergyAndDelayedKnockOut,
     );
     map
 });

@@ -985,6 +985,9 @@ fn forecast_effect_attack_by_mechanic(
             coin_flip_to_block_attack_next_turn(attack.fixed_damage)
         }
         Mechanic::DelayedSpotDamage { amount } => delayed_spot_damage(*amount),
+        Mechanic::SelfDiscardAllEnergyAndDelayedKnockOut => {
+            self_discard_all_energy_and_delayed_knock_out()
+        }
         Mechanic::CopyAttack {
             source,
             require_attacker_energy_match,
@@ -1092,6 +1095,56 @@ fn forecast_effect_attack_by_mechanic(
         }
         Mechanic::SwitchSelfWithTypedBench { energy_type } => {
             switch_self_with_typed_bench(state, attack.fixed_damage, *energy_type)
+        }
+        Mechanic::DiscardStadiumInPlay => discard_stadium_in_play(attack.fixed_damage),
+        Mechanic::DamageAllOpponentPokemonAndBoostSelfAttack {
+            damage,
+            attack_name,
+            boost,
+        } => damage_all_opponent_pokemon_and_boost_self_attack(
+            state,
+            *damage,
+            attack_name.clone(),
+            *boost,
+        ),
+        Mechanic::LockRandomDefenderAttack { duration } => {
+            lock_random_defender_attack(attack.fixed_damage, *duration)
+        }
+        Mechanic::DragOpponentBenchThenDamage { damage } => {
+            drag_opponent_bench_then_damage(state, *damage)
+        }
+        Mechanic::RevealTopThenDamagePerHeavyPokemon {
+            reveal,
+            retreat_cost_at_least,
+            damage_per,
+        } => reveal_top_then_damage_per_heavy_pokemon(
+            attack.fixed_damage,
+            *reveal,
+            *retreat_cost_at_least,
+            *damage_per,
+        ),
+        Mechanic::DiscardTopThenExtraDamageIfTypedPokemon {
+            energy_type,
+            extra_damage,
+        } => discard_top_then_extra_damage_if_typed_pokemon(
+            attack.fixed_damage,
+            *energy_type,
+            *extra_damage,
+        ),
+        Mechanic::ExtraDamageIfFewerPokemonInPlay { extra_damage } => {
+            extra_damage_if_fewer_pokemon_in_play(state, attack.fixed_damage, *extra_damage)
+        }
+        Mechanic::ExtraDamageIfDefenderNameContains {
+            name_part,
+            extra_damage,
+        } => extra_damage_if_defender_name_contains(
+            state,
+            attack.fixed_damage,
+            name_part,
+            *extra_damage,
+        ),
+        Mechanic::DiscardRandomOwnEnergy { count } => {
+            discard_random_own_energy(attack.fixed_damage, *count)
         }
         Mechanic::DiscardTopThenExtraDamageIfItem { extra_damage } => {
             discard_top_then_extra_damage_if_item(attack.fixed_damage, *extra_damage)
@@ -2193,6 +2246,31 @@ fn push_direct_damage_choices(state: &mut State, action: &Action, damage: u32, b
         return; // do nothing, since we use common_attack_mutation, turn should end, and no damage applied.
     }
     state.move_generation_stack.push((action.actor, choices));
+}
+
+/// Armaldo - Abyssal Drop: the Energy is spent up front, and the marked spot is
+/// finished off at the end of the opponent's next turn. Any HP pool in the game
+/// is well under this number, so the delayed damage always knocks out.
+const DELAYED_KNOCK_OUT_DAMAGE: u32 = 1_000;
+
+fn self_discard_all_energy_and_delayed_knock_out() -> AttackOutcomes {
+    active_damage_effect_doutcome(0, move |_, state, action| {
+        let attached = state.get_active(action.actor).attached_energy.clone();
+        state.discard_from_active(action.actor, &attached);
+
+        let opponent = (action.actor + 1) % 2;
+        let choices: Vec<SimpleAction> = state
+            .enumerate_in_play_pokemon(opponent)
+            .map(|(in_play_idx, _)| SimpleAction::ScheduleDelayedSpotDamage {
+                target_player: opponent,
+                target_in_play_idx: in_play_idx,
+                amount: DELAYED_KNOCK_OUT_DAMAGE,
+            })
+            .collect();
+        if !choices.is_empty() {
+            state.move_generation_stack.push((action.actor, choices));
+        }
+    })
 }
 
 fn delayed_spot_damage(damage: u32) -> AttackOutcomes {
@@ -4398,6 +4476,212 @@ fn switch_self_with_typed_bench(
             }
         },
     ))
+}
+
+/// Archeops - Wild Spin: hits the whole opposing board, and leaves a boost on the
+/// attacker so the same attack hits harder next turn. The boost compounds because
+/// the damage modifier is read at attack time.
+fn damage_all_opponent_pokemon_and_boost_self_attack(
+    state: &State,
+    base_damage: u32,
+    attack_name: String,
+    boost: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let targets: Vec<(u32, bool, usize)> = state
+        .enumerate_in_play_pokemon(opponent)
+        .map(|(in_play_idx, _)| (base_damage, true, in_play_idx))
+        .collect();
+    damage_effect_doutcome(targets, move |_, state, action| {
+        state.get_active_mut(action.actor).add_effect(
+            CardEffect::IncreasedDamageForAttack {
+                attack_name: attack_name.clone(),
+                amount: boost,
+            },
+            1,
+        );
+    })
+}
+
+/// Quagsire - Amnesia: one of the defender's own attacks is taken away, chosen at
+/// random from the ones it has.
+fn lock_random_defender_attack(damage: u32, duration: u8) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |rng, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        let Some(defender) = state.in_play_pokemon[opponent][0].as_ref() else {
+            return;
+        };
+        let Card::Pokemon(card) = &defender.card else {
+            return;
+        };
+        if card.attacks.is_empty() {
+            return;
+        }
+        let chosen = card.attacks[rng.gen_range(0..card.attacks.len())]
+            .title
+            .clone();
+        state
+            .get_active_mut(opponent)
+            .add_effect(CardEffect::CannotUseAttack(chosen), duration);
+    })
+}
+
+/// Sandy Shocks - Pull In and Pound: the damage rides on the switch, so an empty
+/// Bench means the attack does nothing at all.
+fn drag_opponent_bench_then_damage(state: &State, damage: u32) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let choices: Vec<SimpleAction> = state
+        .enumerate_bench_pokemon(opponent)
+        .map(|(in_play_idx, _)| SimpleAction::Activate {
+            player: opponent,
+            in_play_idx,
+        })
+        .collect();
+    if choices.is_empty() {
+        return active_damage_doutcome(0);
+    }
+    // The switch happens first; the damage then lands on the Active Spot, which by
+    // that point holds whichever Pokemon was dragged out.
+    AttackOutcomes::single(AttackOutcome::effect_only(move |_, state, action| {
+        let opponent = (action.actor + 1) % 2;
+        let damage_step = SimpleAction::ApplyDamage {
+            attacking_ref: (action.actor, 0),
+            targets: vec![(damage, opponent, 0)],
+            is_from_active_attack: true,
+        };
+        // LIFO: push the damage first so the switch resolves before it.
+        state
+            .move_generation_stack
+            .push((action.actor, vec![damage_step]));
+        state
+            .move_generation_stack
+            .push((action.actor, choices.clone()));
+    }))
+}
+
+/// Golurk - Heavy Rocket: peek at the top of the deck, count the heavy Pokemon,
+/// and put everything back.
+fn reveal_top_then_damage_per_heavy_pokemon(
+    base_damage: u32,
+    reveal: usize,
+    retreat_cost_at_least: usize,
+    damage_per: u32,
+) -> AttackOutcomes {
+    AttackOutcomes::single(AttackOutcome::effect_only(move |rng, state, action| {
+        let mut revealed = Vec::new();
+        for _ in 0..reveal {
+            match state.decks[action.actor].draw() {
+                Some(card) => revealed.push(card),
+                None => break,
+            }
+        }
+        let heavy = revealed
+            .iter()
+            .filter(|card| {
+                matches!(card, Card::Pokemon(pokemon) if pokemon.retreat_cost.len() >= retreat_cost_at_least)
+            })
+            .count() as u32;
+        state.decks[action.actor].cards.extend(revealed);
+        state.decks[action.actor].shuffle(false, rng);
+
+        let opponent = (action.actor + 1) % 2;
+        if let Some(defender) = state.in_play_pokemon[opponent][0].as_mut() {
+            defender.apply_damage(base_damage + heavy * damage_per);
+        }
+    }))
+}
+
+/// Machop - Shatter / Conkeldurr - Bedrock Breaker: the Stadium goes regardless of
+/// who put it in play.
+fn discard_stadium_in_play(damage: u32) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |_, state, _| {
+        if let Some(stadium) = state.active_stadium.take() {
+            let owner = state.active_stadium_owner.take().unwrap_or(0);
+            state.discard_piles[owner].push(stadium);
+        }
+    })
+}
+
+/// Dugtrio - Cliff Crumbler: the top card is discarded either way; being a Pokemon
+/// of the right type is what adds the damage.
+fn discard_top_then_extra_damage_if_typed_pokemon(
+    base_damage: u32,
+    energy_type: EnergyType,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    AttackOutcomes::single(AttackOutcome::effect_only(move |_, state, action| {
+        let bonus = match state.decks[action.actor].draw() {
+            Some(card) => {
+                let matches = matches!(
+                    &card,
+                    Card::Pokemon(pokemon) if pokemon.energy_type == energy_type
+                );
+                state.discard_piles[action.actor].push(card);
+                if matches {
+                    extra_damage
+                } else {
+                    0
+                }
+            }
+            None => 0,
+        };
+        let opponent = (action.actor + 1) % 2;
+        if let Some(defender) = state.in_play_pokemon[opponent][0].as_mut() {
+            defender.apply_damage(base_damage + bonus);
+        }
+    }))
+}
+
+/// Tyrantrum - Tyrannical Fang: being outnumbered on the board is the condition.
+fn extra_damage_if_fewer_pokemon_in_play(
+    state: &State,
+    base_damage: u32,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let own = state
+        .enumerate_in_play_pokemon(state.current_player)
+        .count();
+    let theirs = state.enumerate_in_play_pokemon(opponent).count();
+    active_damage_doutcome(base_damage + if own < theirs { extra_damage } else { 0 })
+}
+
+/// Marowak - Punish: the condition is written against the defender's printed name.
+fn extra_damage_if_defender_name_contains(
+    state: &State,
+    base_damage: u32,
+    name_part: &str,
+    extra_damage: u32,
+) -> AttackOutcomes {
+    let opponent = (state.current_player + 1) % 2;
+    let matches = state.in_play_pokemon[opponent][0]
+        .as_ref()
+        .is_some_and(|defender| defender.get_name().contains(name_part));
+    active_damage_doutcome(base_damage + if matches { extra_damage } else { 0 })
+}
+
+/// Groudon - Gaia Blast: the cost comes off the attacker's own side of the board,
+/// anywhere on it.
+fn discard_random_own_energy(damage: u32, count: usize) -> AttackOutcomes {
+    active_damage_effect_doutcome(damage, move |rng, state, action| {
+        for _ in 0..count {
+            let holders: Vec<usize> = state
+                .enumerate_in_play_pokemon(action.actor)
+                .filter(|(_, pokemon)| !pokemon.attached_energy.is_empty())
+                .map(|(in_play_idx, _)| in_play_idx)
+                .collect();
+            if holders.is_empty() {
+                break;
+            }
+            let holder = holders[rng.gen_range(0..holders.len())];
+            let Some(pokemon) = state.in_play_pokemon[action.actor][holder].as_mut() else {
+                break;
+            };
+            let idx = rng.gen_range(0..pokemon.attached_energy.len());
+            let energy = pokemon.attached_energy.remove(idx);
+            state.discard_energies[action.actor].push(energy);
+        }
+    })
 }
 
 /// Pachirisu - Crackling Snap: the top card is discarded either way; being an

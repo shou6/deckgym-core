@@ -418,6 +418,10 @@ pub enum Mechanic {
     DelayedSpotDamage {
         amount: u32,
     },
+    /// Armaldo - Abyssal Drop: pay every Energy on the attacker, then mark one of
+    /// the opponent's spots to be Knocked Out at the end of their next turn.
+    /// The knockout is delayed damage large enough to finish anything.
+    SelfDiscardAllEnergyAndDelayedKnockOut,
     // End Unique mechanics
     DamageAndCardEffect {
         opponent: bool,
@@ -786,6 +790,57 @@ pub enum Mechanic {
     /// add damage when it turns out to be an Item.
     DiscardTopThenExtraDamageIfItem {
         extra_damage: u32,
+    },
+    /// Machop - Shatter / Conkeldurr - Bedrock Breaker: discard whatever Stadium
+    /// is in play, whoever put it there.
+    DiscardStadiumInPlay,
+    /// Archeops - Wild Spin: damage every one of the opponent's Pokemon, and set
+    /// this same attack up to hit `boost` harder next turn.
+    DamageAllOpponentPokemonAndBoostSelfAttack {
+        /// Wild Spin's printed damage is 0; the 20 lives in the effect text.
+        damage: u32,
+        attack_name: String,
+        boost: u32,
+    },
+    /// Quagsire - Amnesia: pick one of the defender's attacks at random and lock
+    /// it for the opponent's next turn.
+    LockRandomDefenderAttack {
+        duration: u8,
+    },
+    /// Sandy Shocks - Pull In and Pound: drag one of the opponent's Benched
+    /// Pokemon out, then hit whatever came out. No Bench means no damage either.
+    DragOpponentBenchThenDamage {
+        damage: u32,
+    },
+    /// Golurk - Heavy Rocket: look at the top `reveal` cards and add `damage_per`
+    /// for each Pokemon whose Retreat Cost is at least `retreat_cost_at_least`.
+    /// The cards go back into the deck.
+    RevealTopThenDamagePerHeavyPokemon {
+        reveal: usize,
+        retreat_cost_at_least: usize,
+        damage_per: u32,
+    },
+    /// Dugtrio - Cliff Crumbler: discard the top card of the attacker's deck and
+    /// add damage when it is a Pokemon of `energy_type`.
+    DiscardTopThenExtraDamageIfTypedPokemon {
+        energy_type: EnergyType,
+        extra_damage: u32,
+    },
+    /// Tyrantrum - Tyrannical Fang: extra damage while the attacker has fewer
+    /// Pokemon in play than the opponent.
+    ExtraDamageIfFewerPokemonInPlay {
+        extra_damage: u32,
+    },
+    /// Marowak - Punish: extra damage when the defender's name contains
+    /// `name_part`.
+    ExtraDamageIfDefenderNameContains {
+        name_part: String,
+        extra_damage: u32,
+    },
+    /// Groudon - Gaia Blast: discard `count` random Energy from among everything
+    /// attached to the attacker's own Pokemon.
+    DiscardRandomOwnEnergy {
+        count: usize,
     },
     /// Rotom - Assault Laser: extra damage while the *defender* holds a Tool.
     /// `ExtraDamageIfToolAttached` looks at the attacker's own Tool instead.

@@ -106,6 +106,8 @@ mod emolga_dedenne_ex_tool_damage_test;
 mod entei_test;
 #[path = "pokemon/farigiraf_dipplin_test.rs"]
 mod farigiraf_dipplin_test;
+#[path = "pokemon/fighting_batch_test.rs"]
+mod fighting_batch_test;
 #[path = "pokemon/fire_dragon_batch2_test.rs"]
 mod fire_dragon_batch2_test;
 #[path = "pokemon/fire_dragon_batch_test.rs"]
