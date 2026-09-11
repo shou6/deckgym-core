@@ -38,6 +38,9 @@ mod bonsly_teary_attack_test;
 mod brambleghast_accept_pain_test;
 #[path = "pokemon/breloom_test.rs"]
 mod breloom_test;
+#[path = "pokemon/claydol_heal_block_test.rs"]
+mod claydol_heal_block_test;
+
 #[path = "pokemon/colorless_batch_test.rs"]
 mod colorless_batch_test;
 

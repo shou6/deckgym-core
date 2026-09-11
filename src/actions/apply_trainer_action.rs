@@ -629,8 +629,9 @@ fn hitting_hammer_outcomes() -> Outcomes {
 
 fn big_malasada_effect(rng: &mut StdRng, state: &mut State, action: &Action) {
     // Heal 10 damage and remove a random Special Condition from your Active Pokémon.
+    let blocked = state.healing_is_blocked();
     if let Some(active) = state.in_play_pokemon[action.actor][0].as_mut() {
-        active.heal(10);
+        active.heal(10, blocked);
         let conditions: Vec<StatusCondition> = [
             active.is_poisoned().then_some(StatusCondition::Poisoned),
             active.is_paralyzed().then_some(StatusCondition::Paralyzed),
@@ -729,9 +730,10 @@ fn marlon_effect(_: &mut StdRng, state: &mut State, action: &Action) {
 fn irida_effect(_: &mut StdRng, state: &mut State, action: &Action) {
     // Heal 40 damage from each of your Pokémon that has any Water Energy attached.
     debug!("Irida: Healing 40 damage from each Pokemon with Water Energy attached");
+    let blocked = state.healing_is_blocked();
     for pokemon in state.in_play_pokemon[action.actor].iter_mut().flatten() {
         if pokemon.attached_energy.contains(&EnergyType::Water) {
-            pokemon.heal(40);
+            pokemon.heal(40, blocked);
         }
     }
 }
@@ -918,8 +920,9 @@ fn team_effect(rng: &mut StdRng, state: &mut State, action: &Action) {
 
 fn lucky_ice_pop_outcomes(_state: &State, _acting_player: usize) -> Outcomes {
     let heads_mutation = Box::new(|_: &mut StdRng, state: &mut State, action: &Action| {
+        let blocked = state.healing_is_blocked();
         if let Some(active) = state.in_play_pokemon[action.actor][0].as_mut() {
-            active.heal(20);
+            active.heal(20, blocked);
         }
         // Card was already discarded by wrap_with_common_logic, move it back to hand
         if let SimpleAction::Play { trainer_card } = &action.action {
@@ -935,8 +938,9 @@ fn lucky_ice_pop_outcomes(_state: &State, _acting_player: usize) -> Outcomes {
     });
 
     let tails_mutation = Box::new(|_: &mut StdRng, state: &mut State, action: &Action| {
+        let blocked = state.healing_is_blocked();
         if let Some(active) = state.in_play_pokemon[action.actor][0].as_mut() {
-            active.heal(20);
+            active.heal(20, blocked);
         }
     });
 

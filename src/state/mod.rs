@@ -715,6 +715,16 @@ impl State {
 
     /// Discards a Pokemon from play, moving it, its evolution chain, and its energies
     ///  to the discard pile.
+    /// Claydol's Heal Block: "Pokémon (both yours and your opponent's) can't be healed."
+    /// One Claydol anywhere in play stops every heal on the table.
+    pub(crate) fn healing_is_blocked(&self) -> bool {
+        (0..2).any(|player| {
+            self.enumerate_in_play_pokemon(player).any(|(_, pokemon)| {
+                has_ability_mechanic(&pokemon.card, &AbilityMechanic::HealBlock)
+            })
+        })
+    }
+
     pub(crate) fn discard_from_play(&mut self, ko_receiver: usize, ko_pokemon_idx: usize) {
         let ko_pokemon = self.in_play_pokemon[ko_receiver][ko_pokemon_idx]
             .as_ref()

@@ -352,13 +352,14 @@ fn apply_checkup_healing_abilities(state: &mut State) {
         })
         .collect();
 
+    let blocked = state.healing_is_blocked();
     for (player, amount) in healers {
         debug!(
             "Blessed Salt: Healing {} damage from each of player {}'s Pokémon",
             amount, player
         );
         for pokemon in state.in_play_pokemon[player].iter_mut().flatten() {
-            pokemon.heal(amount);
+            pokemon.heal(amount, blocked);
         }
     }
 }

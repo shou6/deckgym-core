@@ -332,9 +332,10 @@ fn forecast_effect_attack_by_mechanic(
             let energy_type = *energy_type;
             let amount = *amount;
             active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+                let blocked = state.healing_is_blocked();
                 for pokemon in state.in_play_pokemon[action.actor].iter_mut().flatten() {
                     if pokemon.get_energy_type() == Some(energy_type) {
-                        pokemon.heal(amount);
+                        pokemon.heal(amount, blocked);
                     }
                 }
             })
@@ -2545,7 +2546,8 @@ fn coin_flip_damage_or_heal_opponent_attack(damage: u32, heal: u32) -> AttackOut
         active_damage_outcome(damage),
         AttackOutcome::effect_only(move |_, state, action| {
             let opponent = (action.actor + 1) % 2;
-            state.get_active_mut(opponent).heal(heal);
+            let blocked = state.healing_is_blocked();
+            state.get_active_mut(opponent).heal(heal, blocked);
         }),
     )
 }
@@ -3444,8 +3446,9 @@ fn heal_all_your_pokemon_attack(damage: u32, heal: u32) -> AttackOutcomes {
 }
 
 fn heal_all_pokemon(state: &mut State, player: usize, amount: u32) {
+    let blocked = state.healing_is_blocked();
     for pokemon in state.in_play_pokemon[player].iter_mut().flatten() {
-        pokemon.heal(amount);
+        pokemon.heal(amount, blocked);
     }
 }
 
@@ -3458,11 +3461,12 @@ fn heal_all_benched_pokemon_attack(damage: u32, amount: u32, only_basic: bool) -
             .filter(|(_, pokemon)| !only_basic || pokemon.card.is_basic())
             .map(|(idx, _)| idx)
             .collect();
+        let blocked = state.healing_is_blocked();
         for idx in benched {
             state.in_play_pokemon[action.actor][idx]
                 .as_mut()
                 .expect("Benched Pokémon should exist")
-                .heal(amount);
+                .heal(amount, blocked);
         }
     })
 }
@@ -3470,7 +3474,8 @@ fn heal_all_benched_pokemon_attack(damage: u32, amount: u32, only_basic: bool) -
 fn coin_flip_self_heal_attack(damage: u32, heal: u32) -> AttackOutcomes {
     AttackOutcomes::binary_coin(
         active_damage_effect_outcome(damage, move |_, state, action| {
-            state.get_active_mut(action.actor).heal(heal);
+            let blocked = state.healing_is_blocked();
+            state.get_active_mut(action.actor).heal(heal, blocked);
         }),
         active_damage_outcome(damage),
     )
@@ -3552,8 +3557,9 @@ fn flip_until_tails_bonus_attack(base_damage: u32, damage_per_heads: u32) -> Att
 
 fn self_heal_attack(heal: u32, attack: &Attack) -> AttackOutcomes {
     active_damage_effect_doutcome(attack.fixed_damage, move |_, state, action| {
+        let blocked = state.healing_is_blocked();
         let active = state.get_active_mut(action.actor);
-        active.heal(heal);
+        active.heal(heal, blocked);
     })
 }
 
@@ -3567,7 +3573,8 @@ fn self_heal_and_card_effect_attack(
     effect_duration: u8,
 ) -> AttackOutcomes {
     active_damage_effect_doutcome(damage, move |_, state, action| {
-        state.get_active_mut(action.actor).heal(heal);
+        let blocked = state.healing_is_blocked();
+        state.get_active_mut(action.actor).heal(heal, blocked);
         let target = if opponent {
             (action.actor + 1) % 2
         } else {
@@ -3582,7 +3589,8 @@ fn self_heal_and_card_effect_attack(
 fn self_heal_if_stadium_in_play(state: &State, damage: u32, heal: u32) -> AttackOutcomes {
     if state.active_stadium.is_some() {
         active_damage_effect_doutcome(damage, move |_, state, action| {
-            state.get_active_mut(action.actor).heal(heal);
+            let blocked = state.healing_is_blocked();
+            state.get_active_mut(action.actor).heal(heal, blocked);
         })
     } else {
         active_damage_doutcome(damage)
@@ -3608,7 +3616,8 @@ fn inflict_status_if_stadium_in_play(
 fn self_asleep_and_heal_attack(heal: u32, damage: u32) -> AttackOutcomes {
     active_damage_effect_doutcome(damage, move |_, state, action| {
         state.apply_status_condition(action.actor, 0, StatusCondition::Asleep);
-        state.get_active_mut(action.actor).heal(heal);
+        let blocked = state.healing_is_blocked();
+        state.get_active_mut(action.actor).heal(heal, blocked);
     })
 }
 
@@ -3847,12 +3856,14 @@ fn coin_flip_set_opponent_hp(hp: u32) -> AttackOutcomes {
     AttackOutcomes::binary_coin(
         active_damage_effect_outcome(0, move |_, state, action| {
             let opponent = (action.actor + 1) % 2;
+            let blocked = state.healing_is_blocked();
             let active = state.get_active_mut(opponent);
             let current = active.get_remaining_hp();
             if current > hp {
                 active.apply_damage(current - hp);
             } else {
-                active.heal(hp - current);
+                // Setting HP upward is healing, so Heal Block stops that half.
+                active.heal(hp - current, blocked);
             }
         }),
         active_damage_outcome(0),
@@ -5687,7 +5698,8 @@ fn heal_self_if_defender_poisoned(damage: u32, heal: u32) -> AttackOutcomes {
     active_damage_effect_doutcome(damage, move |_, state, action| {
         let opponent = (action.actor + 1) % 2;
         if state.get_active(opponent).is_poisoned() {
-            state.get_active_mut(action.actor).heal(heal);
+            let blocked = state.healing_is_blocked();
+            state.get_active_mut(action.actor).heal(heal, blocked);
         }
     })
 }
@@ -6279,7 +6291,8 @@ fn heal_equal_to_damage_dealt_attack(damage: u32) -> AttackOutcomes {
                 let dealt = hp_before
                     .get()
                     .saturating_sub(state.get_active(opponent).get_remaining_hp());
-                state.get_active_mut(action.actor).heal(dealt);
+                let blocked = state.healing_is_blocked();
+                state.get_active_mut(action.actor).heal(dealt, blocked);
             }
         },
     ))

@@ -180,7 +180,16 @@ impl PlayedCard {
         }
     }
 
-    pub(crate) fn heal(&mut self, amount: u32) {
+    /// Remove damage from this Pokémon.
+    ///
+    /// `healing_blocked` is `State::healing_is_blocked()` - Claydol's Heal Block stops every heal
+    /// on the table. The flag is a parameter because a `PlayedCard` cannot see the board, and
+    /// making it explicit means each call site had to decide whether it is really healing:
+    /// *moving* damage counters (Acerola, Mimikyu) is not, so those pass `false`.
+    pub(crate) fn heal(&mut self, amount: u32, healing_blocked: bool) {
+        if healing_blocked {
+            return;
+        }
         self.damage_counters = self.damage_counters.saturating_sub(amount);
     }
 

@@ -96,6 +96,7 @@ impl State {
         from_zone: bool,
         is_turn_energy: bool,
     ) {
+        let blocked = self.healing_is_blocked();
         let mechanic = {
             let pokemon = self.in_play_pokemon[actor][in_play_idx]
                 .as_ref()
@@ -171,7 +172,7 @@ impl State {
                 let pokemon = self.in_play_pokemon[actor][in_play_idx]
                     .as_mut()
                     .expect("Pokemon should be there if attaching energy to it");
-                pokemon.heal(20);
+                pokemon.heal(20, blocked);
             }
 
             // Check for Porygon2's Buggy Evolution ability

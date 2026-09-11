@@ -180,7 +180,8 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::HealYourTypedActiveOnBench { amount, .. } => {
             let amount = *amount;
             Outcomes::single_fn(move |_, state, action| {
-                state.get_active_mut(action.actor).heal(amount);
+                let blocked = state.healing_is_blocked();
+                state.get_active_mut(action.actor).heal(amount, blocked);
             })
         }
         AbilityMechanic::InfiltratingInspection => {
@@ -253,6 +254,7 @@ fn forecast_ability_by_mechanic(
             panic!("CannotAttackWithoutBenched is a passive ability")
         }
         AbilityMechanic::AllowTwoTools => panic!("AllowTwoTools is a passive ability"),
+        AbilityMechanic::HealBlock => panic!("HealBlock is a passive ability"),
         AbilityMechanic::ImmuneToStatusCondition { .. } => {
             panic!("ImmuneToStatusCondition is a passive ability")
         }
@@ -455,9 +457,10 @@ fn discard_energy_to_increase_type_damage(
 
 fn heal_all_your_pokemon(amount: u32, energy_type: Option<EnergyType>) -> Outcomes {
     Outcomes::single_fn(move |_rng, state, action| {
+        let blocked = state.healing_is_blocked();
         for pokemon in state.in_play_pokemon[action.actor].iter_mut().flatten() {
             if energy_type.is_none_or(|t| pokemon.get_energy_type() == Some(t)) {
-                pokemon.heal(amount);
+                pokemon.heal(amount, blocked);
             }
         }
     })
@@ -818,14 +821,16 @@ fn coin_flip_paralyze_opponent_active() -> Outcomes {
 
 fn heal_active_your_pokemon(amount: u32) -> Outcomes {
     Outcomes::single_fn(move |_rng, state, action| {
+        let blocked = state.healing_is_blocked();
         let active = state.get_active_mut(action.actor);
-        active.heal(amount);
+        active.heal(amount, blocked);
     })
 }
 
 fn move_fixed_damage_from_active_to_this_benched(self_idx: usize, amount: u32) -> Outcomes {
     Outcomes::single_fn(move |_rng, state, action| {
-        state.get_active_mut(action.actor).heal(amount);
+        // Moving damage counters is not healing, so Heal Block does not stop it.
+        state.get_active_mut(action.actor).heal(amount, false);
         let targets = vec![(amount, action.actor, self_idx)];
         handle_damage(state, (action.actor, 0), &targets, false, None);
     })

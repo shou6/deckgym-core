@@ -368,8 +368,10 @@ pub(crate) fn on_end_turn(player_ending_turn: usize, state: &mut State) {
         }
         if let AbilityMechanic::EndTurnHealSelfIfActive { amount } = mechanic {
             debug!("Full-Mouth Manner: Healing 20 damage from active");
+            let amount = *amount;
+            let blocked = state.healing_is_blocked();
             let active = state.get_active_mut(player_ending_turn);
-            active.heal(*amount);
+            active.heal(amount, blocked);
         }
     }
 
@@ -521,6 +523,7 @@ pub(crate) fn on_end_turn(player_ending_turn: usize, state: &mut State) {
 /// Leftovers: At the end of your turn, if the Pokémon this card is attached to is in the Active
 /// Spot, heal 10 damage from that Pokémon.
 fn apply_leftovers_healing(player_ending_turn: usize, state: &mut State) {
+    let blocked = state.healing_is_blocked();
     let Some(active) = state.in_play_pokemon[player_ending_turn][0].as_mut() else {
         return;
     };
@@ -528,12 +531,13 @@ fn apply_leftovers_healing(player_ending_turn: usize, state: &mut State) {
         return;
     }
     debug!("Leftovers: Healing 10 damage from the Active Pokémon");
-    active.heal(10);
+    active.heal(10, blocked);
 }
 
 /// Lum Berry and Sitrus Berry both read "at the end of each turn", so they fire for both players'
 /// Pokemon - everywhere in play, not just the Active Spot - and discard themselves when they do.
 fn apply_berry_tools(state: &mut State) {
+    let blocked = state.healing_is_blocked();
     for player in 0..2 {
         for in_play_idx in 0..state.in_play_pokemon[player].len() {
             let Some(pokemon) = state.in_play_pokemon[player][in_play_idx].as_mut() else {
@@ -549,9 +553,11 @@ fn apply_berry_tools(state: &mut State) {
             }
             if has_tool(pokemon, CardId::B1218SitrusBerry) {
                 let half = pokemon.get_effective_total_hp() / 2;
-                if pokemon.get_remaining_hp() <= half {
+                // Claydol's Heal Block stops the heal, and with it the Berry's own condition
+                // ("if you do, discard this card"), so the Berry stays attached.
+                if !blocked && pokemon.get_remaining_hp() <= half {
                     debug!("Sitrus Berry: Healing 30 damage");
-                    pokemon.heal(30);
+                    pokemon.heal(30, blocked);
                     state.discard_tool(player, in_play_idx);
                 }
             }
@@ -598,13 +604,14 @@ fn apply_soothing_shore_healing(player_ending_turn: usize, state: &mut State) {
     if !is_soothing_shore_active(state) {
         return;
     }
+    let blocked = state.healing_is_blocked();
     for pokemon in state.in_play_pokemon[player_ending_turn]
         .iter_mut()
         .flatten()
     {
         if pokemon.attached_energy.contains(&EnergyType::Water) {
             debug!("Soothing Shore: Healing 20 from {}", pokemon.get_name());
-            pokemon.heal(20);
+            pokemon.heal(20, blocked);
         }
     }
 }

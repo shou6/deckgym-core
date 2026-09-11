@@ -324,6 +324,9 @@ pub enum AbilityMechanic {
     CannotAttackWithoutBenched {
         pokemon_names: Vec<String>,
     },
+    /// Claydol's Heal Block: "Pokémon (both yours and your opponent's) can't be healed."
+    /// Read by `State::healing_is_blocked`.
+    HealBlock,
     /// Revavroom's Dual Customization: "This Pokémon may have up to 2 Pokémon Tool cards
     /// attached to it." Read by `PlayedCard::max_tools`.
     AllowTwoTools,
