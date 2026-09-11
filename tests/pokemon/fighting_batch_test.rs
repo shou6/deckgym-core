@@ -595,3 +595,77 @@ fn test_armaldo_abyssal_drop_pays_its_energy_and_marks_a_spot() {
         "the marked Charmander should have been knocked out"
     );
 }
+
+/// Falinks's "Iron Defense Formation": "If you have another Falinks in play, this Pokémon's
+/// attacks do +20 damage to your opponent's Active Pokémon, and this Pokémon takes -20 damage
+/// from attacks from your opponent's Pokémon."
+#[test]
+fn test_falinks_formation_needs_a_second_falinks() {
+    for (ally, expected_defender_hp) in [
+        (CardId::B2092Falinks, 260u32), // 20 + 20
+        (CardId::A1053Squirtle, 280),   // 20
+    ] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![
+                PlayedCard::from_id(CardId::B2092Falinks).with_energy(vec![EnergyType::Fighting]),
+                PlayedCard::from_id(ally),
+            ],
+            vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        game.apply_action(&Action {
+            actor: 0,
+            action: attack_action(CardId::B2092Falinks, 0),
+            is_stack: false,
+        });
+        assert_eq!(
+            game.get_state_clone().get_active(1).get_remaining_hp(),
+            expected_defender_hp,
+            "ally {ally:?}",
+        );
+    }
+}
+
+/// The other half of the formation: the shield only stands with a second Falinks in play.
+#[test]
+fn test_falinks_formation_softens_incoming_damage() {
+    for (ally, expected_falinks_hp) in [
+        (CardId::B2092Falinks, 240u32), // 80 - 20
+        (CardId::A1053Squirtle, 220),   // 80
+    ] {
+        let mut game = get_initialized_game(0);
+        let mut state = game.get_state_clone();
+        state.set_board(
+            vec![
+                PlayedCard::from_id(CardId::A1061Poliwrath).with_energy(vec![
+                    EnergyType::Water,
+                    EnergyType::Colorless,
+                    EnergyType::Colorless,
+                ]),
+            ],
+            vec![
+                played_card_with_base_hp(CardId::B2092Falinks, 300, vec![]),
+                PlayedCard::from_id(ally),
+            ],
+        );
+        state.current_player = 0;
+        state.turn_count = 5;
+        game.set_state(state);
+
+        game.apply_action(&Action {
+            actor: 0,
+            action: attack_action(CardId::A1061Poliwrath, 0),
+            is_stack: false,
+        });
+        assert_eq!(
+            game.get_state_clone().get_active(1).get_remaining_hp(),
+            expected_falinks_hp,
+            "Falinks with ally {ally:?}",
+        );
+    }
+}

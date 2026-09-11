@@ -51,6 +51,9 @@ fn forecast_ability_by_mechanic(
             heal_one_your_pokemon_ex_and_discard_random_energy(*amount)
         }
         AbilityMechanic::DamageOneOpponentPokemon { amount } => damage_one_opponent(*amount),
+        AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { .. } => {
+            panic!("BoostAndReduceIfAnotherSameNameInPlay is a passive ability")
+        }
         AbilityMechanic::IncreaseDamageIfArceusInPlay { .. } => {
             panic!("IncreaseDamageIfArceusInPlay is a passive ability")
         }

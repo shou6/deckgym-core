@@ -217,7 +217,13 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             AbilityMechanic::ReduceDamageFromAttacksIfArceusInPlay { amount: 30 },
         );
         // map.insert("If you have Latias in play, this Pokémon has no Retreat Cost.", todo_implementation);
-        // map.insert("If you have another Falinks in play, this Pokémon's attacks do +20 damage to your opponent's Active Pokémon, and this Pokémon takes -20 damage from attacks from your opponent's Pokémon.", todo_implementation);
+        map.insert(
+            "If you have another Falinks in play, this Pokémon's attacks do +20 damage to your opponent's Active Pokémon, and this Pokémon takes -20 damage from attacks from your opponent's Pokémon.",
+            AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay {
+                boost: 20,
+                reduction: 20,
+            },
+        );
         map.insert(
             "If your opponent's Pokémon is Knocked Out by damage from this Pokémon's attacks, during your opponent's next turn, prevent all damage from—and effects of—attacks done to this Pokémon.",
             AbilityMechanic::ProtectSelfNextTurnAfterAttackKnockout,

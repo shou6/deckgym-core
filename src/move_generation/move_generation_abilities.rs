@@ -204,6 +204,7 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::CounterattackDamageOnKnockout { .. } => false, // Passive (damage path)
         AbilityMechanic::ReduceDamageIfFullHp { .. } => false,
         AbilityMechanic::PreventAllAttackEffects => false,
+        AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { .. } => false,
         AbilityMechanic::IncreaseDamageForEvolvesFromOnBench { .. } => false,
         AbilityMechanic::PreventAllDamageAndEffectsOnEvolve => false,
         AbilityMechanic::PoisonAttackerOnDamaged => false,

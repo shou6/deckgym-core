@@ -24,6 +24,12 @@ pub enum AbilityMechanic {
     DamageOneOpponentPokemon {
         amount: u32,
     },
+    /// Falinks's Iron Defense Formation: with another Pokémon of the same name in play, this
+    /// Pokémon's attacks do +`boost` damage and it takes -`reduction` damage.
+    BoostAndReduceIfAnotherSameNameInPlay {
+        boost: u32,
+        reduction: u32,
+    },
     IncreaseDamageIfArceusInPlay {
         amount: u32,
     },

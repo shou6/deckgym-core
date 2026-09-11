@@ -774,7 +774,23 @@ fn get_ability_damage_reduction(
         _ => 0,
     };
 
-    effect_reduction + arceus_reduction + attacker_type_reduction + full_hp_reduction
+    // Falinks's Iron Defense Formation needs a second Falinks on the board, so it too depends on
+    // more than the card itself.
+    let formation_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
+        Some(AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { reduction, .. })
+            if has_another_with_same_name_in_play(state, target_player, receiving_pokemon) =>
+        {
+            debug!("Iron Defense Formation: Reducing damage by {}", reduction);
+            *reduction
+        }
+        _ => 0,
+    };
+
+    effect_reduction
+        + arceus_reduction
+        + attacker_type_reduction
+        + full_hp_reduction
+        + formation_reduction
 }
 
 /// Whether `player` has Arceus or Arceus ex in play (Active or Benched).
@@ -783,6 +799,17 @@ fn has_arceus_in_play(state: &State, player: usize) -> bool {
         let name = pokemon.get_name();
         name == "Arceus" || name == "Arceus ex"
     })
+}
+
+/// Whether `player` has a second Pokémon in play with the same name as `pokemon` (Falinks's
+/// Iron Defense Formation counts "another Falinks", so the holder itself does not qualify).
+fn has_another_with_same_name_in_play(state: &State, player: usize, pokemon: &PlayedCard) -> bool {
+    let name = pokemon.get_name();
+    state
+        .enumerate_in_play_pokemon(player)
+        .filter(|(_, other)| other.get_name() == name)
+        .count()
+        > 1
 }
 
 fn get_ability_damage_increase(
@@ -810,6 +837,15 @@ fn get_ability_damage_increase(
                 amount
             );
             return *amount;
+        }
+    }
+
+    if let Some(AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { boost, .. }) =
+        ability_mechanic_from_effect(&ability.effect)
+    {
+        if has_another_with_same_name_in_play(state, attacking_player, attacking_pokemon) {
+            debug!("Iron Defense Formation: Increasing damage by {}", boost);
+            return *boost;
         }
     }
 
