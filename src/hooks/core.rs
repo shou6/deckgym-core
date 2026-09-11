@@ -511,6 +511,8 @@ pub(crate) fn on_end_turn(player_ending_turn: usize, state: &mut State) {
 
     apply_leftovers_healing(player_ending_turn, state);
 
+    apply_berry_tools(state);
+
     apply_deceptive_needle_damage(player_ending_turn, state);
 
     apply_bad_dreams_damage(state);
@@ -527,6 +529,34 @@ fn apply_leftovers_healing(player_ending_turn: usize, state: &mut State) {
     }
     debug!("Leftovers: Healing 10 damage from the Active Pokémon");
     active.heal(10);
+}
+
+/// Lum Berry and Sitrus Berry both read "at the end of each turn", so they fire for both players'
+/// Pokemon - everywhere in play, not just the Active Spot - and discard themselves when they do.
+fn apply_berry_tools(state: &mut State) {
+    for player in 0..2 {
+        for in_play_idx in 0..state.in_play_pokemon[player].len() {
+            let Some(pokemon) = state.in_play_pokemon[player][in_play_idx].as_mut() else {
+                continue;
+            };
+            if has_tool(pokemon, CardId::A2149LumBerry) {
+                if pokemon.has_status_condition() {
+                    debug!("Lum Berry: Curing every Special Condition");
+                    pokemon.cure_status_conditions();
+                    state.discard_tool(player, in_play_idx);
+                }
+                continue;
+            }
+            if has_tool(pokemon, CardId::B1218SitrusBerry) {
+                let half = pokemon.get_effective_total_hp() / 2;
+                if pokemon.get_remaining_hp() <= half {
+                    debug!("Sitrus Berry: Healing 30 damage");
+                    pokemon.heal(30);
+                    state.discard_tool(player, in_play_idx);
+                }
+            }
+        }
+    }
 }
 
 /// Deceptive Needle: At the end of your turn, if the [D] Pokémon this card is attached to is in
@@ -1086,6 +1116,9 @@ fn get_turn_effect_damage_reduction(
         .get_current_turn_effects()
         .iter()
         .filter_map(|effect| match effect {
+            TurnEffect::ReducedDamageForAllYours { amount, player } if *player == target_player => {
+                Some(*amount)
+            }
             TurnEffect::ReducedDamageForType {
                 amount,
                 energy_type,
@@ -1515,6 +1548,17 @@ fn calculate_type_boost_bonus(
     };
 
     let mut bonus = 0;
+
+    // Beastite: the Ultra Beast it is attached to hits harder for each point its owner has.
+    if let Some(attacker) = state.in_play_pokemon[attacking_player][0].as_ref() {
+        if has_tool(attacker, CardId::A3a066Beastite) && is_ultra_beast(&attacker.get_name()) {
+            let points = state.points[attacking_player] as u32;
+            if points > 0 {
+                debug!("Beastite: Increasing damage by {}", points * 10);
+                bonus += points * 10;
+            }
+        }
+    }
 
     // Unown's POWER: works only alongside an Unown with a different Ability.
     for (_, pokemon) in state.enumerate_in_play_pokemon(attacking_player) {

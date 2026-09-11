@@ -2,6 +2,8 @@
 mod barry_test;
 #[path = "trainers/cheren_test.rs"]
 mod cheren_test;
+#[path = "trainers/colorless_batch_trainers_test.rs"]
+mod colorless_batch_trainers_test;
 #[path = "trainers/cynthia_test.rs"]
 mod cynthia_test;
 #[path = "trainers/drayden_test.rs"]
@@ -10,6 +12,8 @@ mod drayden_test;
 mod elesa_test;
 #[path = "trainers/field_blower_test.rs"]
 mod field_blower_test;
+#[path = "trainers/information_only_test.rs"]
+mod information_only_test;
 #[path = "trainers/iris_trainer_test.rs"]
 mod iris_trainer_test;
 #[path = "trainers/jasmine_test.rs"]

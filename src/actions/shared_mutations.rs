@@ -125,7 +125,7 @@ pub(crate) fn recover_item_from_discard_outcomes(acting_player: usize, state: &S
     Outcomes::from_parts(probabilities, mutations)
 }
 
-fn card_search_outcomes_with_filter<F>(
+pub(crate) fn card_search_outcomes_with_filter<F>(
     acting_player: usize,
     state: &State,
     card_filter: F,

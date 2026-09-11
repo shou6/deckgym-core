@@ -12,8 +12,8 @@ use crate::{
     effects::{CardEffect, TurnEffect},
     hooks::{
         get_counterattack_damage, get_knockout_counterattack_damage, get_knockout_splash_damage,
-        modify_damage, on_attack_knockout, on_end_turn, on_knockout, should_poison_attacker,
-        DamageModifierContext,
+        modify_damage, on_attack_knockout, on_end_turn, on_knockout,
+        should_bounce_attackers_hand_card, should_poison_attacker, DamageModifierContext,
     },
     models::{Card, StatusCondition, TrainerType},
     state::GameOutcome,
@@ -571,6 +571,16 @@ pub(crate) fn handle_damage_only(
                 .as_mut()
                 .expect("Pokemon should be there if taking damage");
             target_pokemon.apply_damage(damage); // Applies without surpassing 0 HP
+                                                 // Hala: the named Pokemon does not faint; it is left on exactly 10 HP.
+            if target_pokemon.get_remaining_hp() == 0
+                && target_pokemon
+                    .get_active_effects()
+                    .iter()
+                    .any(|effect| matches!(effect, CardEffect::SurviveKnockOutAt10))
+            {
+                debug!("Hala: Leaving the Pokemon at 10 HP instead of knocking it out");
+                target_pokemon.set_remaining_hp(10);
+            }
             debug!(
                 "Dealt {} damage to opponent's {} Pokemon. Remaining HP: {}",
                 damage,
@@ -600,6 +610,7 @@ pub(crate) fn handle_damage_only(
             }
         };
         let should_poison = should_poison_attacker(target_pokemon);
+        let should_bounce = should_bounce_attackers_hand_card(target_pokemon);
         // Destiny Burst / Innards Out: the defender hits back as it faints. Measured here rather
         // than from the knockout hook so that a retaliation K.O. is collected in the same pass as
         // the K.O. that triggered it.
@@ -658,6 +669,14 @@ pub(crate) fn handle_damage_only(
         if should_poison {
             state.apply_status_condition(attacking_player, 0, StatusCondition::Poisoned);
             debug!("Poison Barb: Poisoned the attacking Pokemon");
+        }
+
+        // Dark Pendant: a card from the attacker's hand goes back into their deck.
+        if should_bounce && attacking_player != target_player {
+            state.move_generation_stack.push((
+                attacking_player,
+                vec![SimpleAction::ShuffleRandomOwnHandCardIntoDeck],
+            ));
         }
 
         if attacking_player != target_player {
@@ -745,6 +764,19 @@ pub(crate) fn handle_knockouts(
         );
         on_attack_knockout(state, attacking_ref, ko_receiver, is_from_active_attack);
 
+        // Lucky Mittens: the attacker's owner draws a card for each Pokemon it knocks out.
+        let mittens = is_from_active_attack
+            && ko_receiver != attacking_ref.0
+            && state.in_play_pokemon[attacking_ref.0][attacking_ref.1]
+                .as_ref()
+                .is_some_and(|attacker| {
+                    crate::tools::has_tool(attacker, CardId::B1220LuckyMittens)
+                });
+        if mittens {
+            debug!("Lucky Mittens: Drawing a card for the knockout");
+            state.maybe_draw_card(attacking_ref.0);
+        }
+
         // Award points
         {
             let ko_pokemon = state.in_play_pokemon[ko_receiver][ko_pokemon_idx]
@@ -794,7 +826,30 @@ pub(crate) fn handle_knockouts(
             state.record_knocked_out_by_opponent_attack(ko_pokemon_type);
         }
 
-        state.discard_from_play(ko_receiver, ko_pokemon_idx);
+        // Rescue Scarf: the Pokemon goes to its owner's hand instead of the discard pile. The
+        // Tool itself is still discarded, and so is anything else that was on it.
+        let rescued = is_from_active_attack
+            && ko_receiver != attacking_ref.0
+            && state.in_play_pokemon[ko_receiver][ko_pokemon_idx]
+                .as_ref()
+                .is_some_and(|pokemon| crate::tools::has_tool(pokemon, CardId::A4155RescueScarf));
+        if rescued {
+            let card = state.in_play_pokemon[ko_receiver][ko_pokemon_idx]
+                .as_ref()
+                .expect("Pokemon should be there if knocked out")
+                .card
+                .clone();
+            state.discard_from_play(ko_receiver, ko_pokemon_idx);
+            if let Some(pos) = state.discard_piles[ko_receiver]
+                .iter()
+                .position(|discarded| *discarded == card)
+            {
+                let card = state.discard_piles[ko_receiver].remove(pos);
+                state.hands[ko_receiver].push(card);
+            }
+        } else {
+            state.discard_from_play(ko_receiver, ko_pokemon_idx);
+        }
     }
 
     // If game ends because of knockouts, set winner and return so as to short-circuit promotion logic

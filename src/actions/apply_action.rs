@@ -1,7 +1,7 @@
 use std::{collections::HashMap, panic};
 
 use log::debug;
-use rand::{distributions::WeightedIndex, prelude::Distribution, rngs::StdRng};
+use rand::{distributions::WeightedIndex, prelude::Distribution, rngs::StdRng, Rng};
 
 use crate::{
     actions::effect_ability_mechanic_map::{get_ability_mechanic, has_ability_mechanic},
@@ -196,6 +196,8 @@ pub fn forecast_action(state: &State, action: &Action) -> Outcomes {
         | SimpleAction::RecoverToolsFromDiscard { .. }
         | SimpleAction::OpponentRedrawByRemainingPoints
         | SimpleAction::RecoverSupporterFromDiscard
+        | SimpleAction::BenchOpponentPokemonFromDiscard { .. }
+        | SimpleAction::MoveFixedDamageToOpponentActive { .. }
         | SimpleAction::TakeItemsFromTop { .. }
         | SimpleAction::ReturnPokemonToHand { .. }
         | SimpleAction::ShuffleInPlayPokemonIntoDeck { .. }
@@ -214,6 +216,17 @@ pub fn forecast_action(state: &State, action: &Action) -> Outcomes {
             } else {
                 forecast_deterministic_action()
             }
+        }
+        SimpleAction::ShuffleRandomOwnHandCardIntoDeck => {
+            Outcomes::single_fn(|rng, state, action| {
+                if state.hands[action.actor].is_empty() {
+                    return;
+                }
+                let idx = rng.gen_range(0..state.hands[action.actor].len());
+                let card = state.hands[action.actor].remove(idx);
+                state.decks[action.actor].cards.push(card);
+                state.decks[action.actor].shuffle(false, rng);
+            })
         }
         SimpleAction::UseAbility { in_play_idx } => forecast_ability(state, action, *in_play_idx),
         SimpleAction::ApplyDamage {
@@ -483,6 +496,39 @@ fn apply_deterministic_action(state: &mut State, action: &Action) {
         } => apply_discard_own_benched_many_then_damage(action.actor, state, in_play_idxs, *damage),
         SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
             apply_discard_tools_from_hand_then_damage(action.actor, state, *count, *damage)
+        }
+        SimpleAction::MoveFixedDamageToOpponentActive {
+            in_play_idx,
+            amount,
+        } => {
+            let opponent = (action.actor + 1) % 2;
+            let moved = state.in_play_pokemon[action.actor][*in_play_idx]
+                .as_mut()
+                .map(|pokemon| {
+                    let moved = (*amount).min(pokemon.get_damage_counters());
+                    pokemon.heal(moved);
+                    moved
+                })
+                .unwrap_or(0);
+            if moved > 0 {
+                if let Some(defender) = state.in_play_pokemon[opponent][0].as_mut() {
+                    defender.apply_damage(moved);
+                }
+            }
+        }
+        SimpleAction::BenchOpponentPokemonFromDiscard { card } => {
+            let opponent = (action.actor + 1) % 2;
+            let free_slot = (1..4).find(|idx| state.in_play_pokemon[opponent][*idx].is_none());
+            if let Some(slot) = free_slot {
+                if let Some(pos) = state.discard_piles[opponent].iter().position(|c| c == card) {
+                    // Straight from the discard pile, so neither the hand nor the deck is touched.
+                    let card = state.discard_piles[opponent].remove(pos);
+                    state.in_play_pokemon[opponent][slot] = Some(to_playable_card(&card, true));
+                    state.refresh_starting_plains_bonus_for_idx(opponent, slot);
+                    state.refresh_double_grass_bonus_for_player(opponent);
+                    state.refresh_ally_hp_bonus_for_player(opponent);
+                }
+            }
         }
         SimpleAction::RecoverSupporterFromDiscard => {
             let found = state.discard_piles[action.actor].iter().position(|card| {

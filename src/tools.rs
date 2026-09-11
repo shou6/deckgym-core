@@ -68,6 +68,22 @@ static SMALL_BALLOON_EFFECT: LazyLock<String> =
     LazyLock::new(|| tool_effect_text_from_card_id(CardId::B3b064SmallBalloon));
 static ELEGANT_CAPE_EFFECT: LazyLock<String> =
     LazyLock::new(|| tool_effect_text_from_card_id(CardId::B3b065ElegantCape));
+static LUM_BERRY_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::A2149LumBerry));
+static SITRUS_BERRY_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::B1218SitrusBerry));
+static RESCUE_SCARF_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::A4155RescueScarf));
+static LUCKY_MITTENS_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::B1220LuckyMittens));
+static CLEAR_VEIL_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::B4149ClearVeil));
+static BEASTITE_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::A3a066Beastite));
+static DARK_PENDANT_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::A4154DarkPendant));
+static MEMORY_LIGHT_EFFECT: LazyLock<String> =
+    LazyLock::new(|| tool_effect_text_from_card_id(CardId::A4a068MemoryLight));
 static DECEPTIVE_NEEDLE_EFFECT: LazyLock<String> =
     LazyLock::new(|| tool_effect_text_from_card_id(CardId::B4148DeceptiveNeedle));
 
@@ -124,5 +140,13 @@ pub fn is_tool_effect_implemented(trainer_card: &TrainerCard) -> bool {
             || e == SMALL_BALLOON_EFFECT.as_str()
             || e == ELEGANT_CAPE_EFFECT.as_str()
             || e == DECEPTIVE_NEEDLE_EFFECT.as_str()
+            || e == LUM_BERRY_EFFECT.as_str()
+            || e == SITRUS_BERRY_EFFECT.as_str()
+            || e == RESCUE_SCARF_EFFECT.as_str()
+            || e == LUCKY_MITTENS_EFFECT.as_str()
+            || e == CLEAR_VEIL_EFFECT.as_str()
+            || e == BEASTITE_EFFECT.as_str()
+            || e == DARK_PENDANT_EFFECT.as_str()
+            || e == MEMORY_LIGHT_EFFECT.as_str()
     )
 }

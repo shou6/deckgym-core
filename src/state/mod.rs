@@ -619,6 +619,14 @@ impl State {
             return;
         }
 
+        // Clear Veil: "Prevent all effects of attacks used by your opponent's Pokémon done to the
+        // Pokémon this card is attached to." Modeled like Regice's Crystal Body - Special
+        // Conditions are what attacks put on a defender.
+        if has_tool(pokemon, crate::card_ids::CardId::B4149ClearVeil) {
+            debug!("Clear Veil: Pokémon is immune to the effects of attacks");
+            return;
+        }
+
         // Hoothoot's Insomnia: immune to one condition rather than all of them.
         if has_ability_mechanic(
             &pokemon.card,

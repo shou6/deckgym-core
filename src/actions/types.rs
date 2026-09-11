@@ -203,6 +203,18 @@ pub enum SimpleAction {
     ApplyStatusesToOpponentActive {
         conditions: Vec<StatusCondition>,
     },
+    /// Acerola: move `amount` damage from one of your own Pokémon onto the opponent's Active
+    /// Pokémon.
+    MoveFixedDamageToOpponentActive {
+        in_play_idx: usize,
+        amount: u32,
+    },
+    /// Dark Pendant: shuffle a random card from your own hand back into your deck.
+    ShuffleRandomOwnHandCardIntoDeck,
+    /// Pokémon Flute: put a Basic Pokémon from the opponent's discard pile onto their Bench.
+    BenchOpponentPokemonFromDiscard {
+        card: Card,
+    },
     /// Delcatty's Search for Friends: put a Supporter card from your discard pile into your hand.
     /// Which one is not modeled (they are all just cards), so the oldest is taken.
     RecoverSupporterFromDiscard,
@@ -401,6 +413,18 @@ impl fmt::Display for SimpleAction {
             }
             SimpleAction::DiscardToolsFromHandThenDamage { count, damage } => {
                 write!(f, "DiscardToolsFromHandThenDamage({count}, {damage})")
+            }
+            SimpleAction::MoveFixedDamageToOpponentActive {
+                in_play_idx,
+                amount,
+            } => {
+                write!(f, "MoveFixedDamageToOpponentActive({in_play_idx}, {amount})")
+            }
+            SimpleAction::ShuffleRandomOwnHandCardIntoDeck => {
+                write!(f, "ShuffleRandomOwnHandCardIntoDeck")
+            }
+            SimpleAction::BenchOpponentPokemonFromDiscard { card } => {
+                write!(f, "BenchOpponentPokemonFromDiscard({})", card.get_name())
             }
             SimpleAction::RecoverSupporterFromDiscard => {
                 write!(f, "RecoverSupporterFromDiscard")

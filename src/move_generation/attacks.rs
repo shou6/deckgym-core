@@ -3,9 +3,11 @@ use crate::{
         abilities::AbilityMechanic, attacks::Mechanic, get_ability_mechanic, has_ability_mechanic,
         SimpleAction, EFFECT_MECHANIC_MAP,
     },
+    card_ids::CardId,
     effects::CardEffect,
     hooks::{contains_energy, get_attack_cost},
     models::{Attack, EnergyType, PlayedCard},
+    tools::has_tool,
     State,
 };
 
@@ -89,7 +91,9 @@ fn time_recall_attacks(state: &State, player: usize, active_pokemon: &PlayedCard
     let time_recall_active = state
         .enumerate_in_play_pokemon(player)
         .any(|(_, pokemon)| has_ability_mechanic(&pokemon.card, &AbilityMechanic::TimeRecall));
-    if !time_recall_active {
+    // Memory Light does the same thing for the one Pokemon it is attached to.
+    let has_memory_light = has_tool(active_pokemon, CardId::A4a068MemoryLight);
+    if !time_recall_active && !has_memory_light {
         return Vec::new();
     }
 

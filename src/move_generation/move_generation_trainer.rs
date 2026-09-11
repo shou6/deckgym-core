@@ -142,8 +142,91 @@ pub fn trainer_move_generation_implementation(
         CardId::A4157Lyra | CardId::A4197Lyra | CardId::A4b332Lyra | CardId::A4b333Lyra => {
             can_play_lyra(state, trainer_card)
         }
+        // Budding Expeditioner needs Mew ex in the Active Spot.
+        // Lt. Surge only works with one of three named Pokemon in the Active Spot.
+        CardId::A1226LtSurge | CardId::A1273LtSurge => {
+            let named_active = state
+                .maybe_get_active(state.current_player)
+                .is_some_and(|active| {
+                    matches!(
+                        active.get_name().as_str(),
+                        "Raichu" | "Electrode" | "Electabuzz"
+                    )
+                });
+            if named_active {
+                can_play_trainer(state, trainer_card)
+            } else {
+                cannot_play_trainer()
+            }
+        }
+        // Juggler needs 3 or more different Energy types across your Pokemon.
+        CardId::B2151Juggler | CardId::B2192Juggler => {
+            let types: std::collections::HashSet<_> = state
+                .enumerate_in_play_pokemon(state.current_player)
+                .flat_map(|(_, pokemon)| pokemon.attached_energy.iter().copied())
+                .collect();
+            if types.len() >= 3 {
+                can_play_trainer(state, trainer_card)
+            } else {
+                cannot_play_trainer()
+            }
+        }
+        // Beast Wall can only be used while the opponent has no points.
+        CardId::A3a063BeastWall => {
+            if state.points[(state.current_player + 1) % 2] == 0 {
+                can_play_trainer(state, trainer_card)
+            } else {
+                cannot_play_trainer()
+            }
+        }
+        CardId::A1a066BuddingExpeditioner | CardId::A1a080BuddingExpeditioner => {
+            // `maybe_get_active`: this runs during feature detection too, where the board is empty.
+            let mew_ex_active = state
+                .maybe_get_active(state.current_player)
+                .is_some_and(|active| active.get_name() == "Mew ex");
+            if mew_ex_active {
+                can_play_trainer(state, trainer_card)
+            } else {
+                cannot_play_trainer()
+            }
+        }
         // Simple cases: always can play
-        CardId::A4158Silver
+        CardId::A3143FishingNet
+        | CardId::A3148Acerola
+        | CardId::A3190Acerola
+        | CardId::A3153Sophocles
+        | CardId::A3195Sophocles
+        | CardId::A4a069Whitney
+        | CardId::A4a083Whitney
+        | CardId::A4a070TravelingMerchant
+        | CardId::A4a084TravelingMerchant
+        | CardId::A3b069Penny
+        | CardId::A3b086Penny
+        | CardId::B2a092Penny
+        | CardId::B2a109Penny
+        | CardId::A4159Fisher
+        | CardId::A4199Fisher
+        | CardId::B1213PrankSpinner
+        | CardId::B1222Hala
+        | CardId::B1267Hala
+        | CardId::A1a064PokemonFlute
+        | CardId::A1a067Blue
+        | CardId::A1a081Blue
+        | CardId::A2151TeamGalacticGrunt
+        | CardId::A2191TeamGalacticGrunt
+        | CardId::A4152SquirtBottle
+        | CardId::B1215HittingHammer
+        | CardId::A3145RotomDEx
+        | CardId::A3a068Looker
+        | CardId::A3a082Looker
+        | CardId::A4161Hiker
+        | CardId::A4201Hiker
+        | CardId::A4a071Morty
+        | CardId::A4a085Morty
+        | CardId::PA003HandScope
+        | CardId::PA004PokedEx
+        | CardId::PA008PokedEx
+        | CardId::A4158Silver
         | CardId::A4198Silver
         | CardId::A4156Will
         | CardId::A4196Will
@@ -181,9 +264,12 @@ pub fn trainer_move_generation_implementation(
             can_play_flame_patch(state, trainer_card)
         }
         CardId::B1225Copycat | CardId::B1270Copycat => can_play_trainer(state, trainer_card),
-        CardId::A2b069Iono | CardId::A2b088Iono | CardId::A4b340Iono | CardId::A4b341Iono => {
-            can_play_trainer(state, trainer_card)
-        }
+        CardId::A2b069Iono
+        | CardId::A2b088Iono
+        | CardId::A4b340Iono
+        | CardId::A4b341Iono
+        | CardId::B2a089Iono
+        | CardId::B2a106Iono => can_play_trainer(state, trainer_card),
         CardId::B1221Marlon | CardId::B1266Marlon => can_play_marlon(state, trainer_card),
         CardId::B1223May | CardId::B1268May => can_play_trainer(state, trainer_card),
         CardId::B1224Fantina | CardId::B1269Fantina => can_play_trainer(state, trainer_card),

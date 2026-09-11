@@ -37,6 +37,9 @@ pub enum CardEffect {
     /// Gothitelle's Stellar Cradle: this Pokémon falls asleep if its owner attaches Energy from
     /// their Energy Zone to it.
     SleepWhenCharged,
+    /// Hala: if this Pokémon would be Knocked Out by damage from an attack, it survives with
+    /// exactly 10 HP instead. Ursaluna's Guts is the coin-flip version.
+    SurviveKnockOutAt10,
     PreventAllDamageAndEffects,
     /// Prevent all damage from attacks if the incoming damage is at most `threshold` (e.g. Cascoon's Harden).
     PreventDamageIfLessOrEqual {
@@ -108,6 +111,11 @@ pub enum TurnEffect {
     NoEnergyFromZoneToActive,
     ReducedRetreatCost {
         amount: u8,
+    },
+    /// Blue: all of `player`'s Pokémon take `amount` less damage from the opponent's attacks.
+    ReducedDamageForAllYours {
+        amount: u32,
+        player: usize,
     },
     ReducedDamageForType {
         amount: u32,
