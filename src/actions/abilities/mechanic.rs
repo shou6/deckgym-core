@@ -222,6 +222,9 @@ pub enum AbilityMechanic {
         amount: u32,
     },
     CoinFlipSleepOpponentActive,
+    /// Grafaiai's Poison Coating: "Once during your turn, you may flip a coin. If heads, your
+    /// opponent's Active Pokémon is now Poisoned."
+    CoinFlipPoisonOpponentActive,
     DiscardFromHandToDrawCard,
     ImmuneToStatusConditions,
     /// Passive ability shared by Teal Mask Ogerpon ex (Soothing Wind) and Comfey (Flower Shield):
@@ -287,6 +290,19 @@ pub enum AbilityMechanic {
     CanEvolveIntoEeveeEvolution,
     CanEvolveOnFirstTurnIfActive,
     CounterattackDamage {
+        amount: u32,
+    },
+    /// Tyranitar's Energy Plunder: gather every Energy of `energy_type` from this player's
+    /// Pokémon onto this one.
+    GatherTypedEnergyToSelf {
+        energy_type: EnergyType,
+    },
+    /// Glimmora's Shattering Crystal: when this Pokémon is Knocked Out, flip a coin; on heads the
+    /// opponent gets no points for it.
+    CoinFlipDenyPointsOnKnockout,
+    /// Spiritomb's Final Scream: if this Pokémon is Knocked Out in the Active Spot by an
+    /// opponent's attack, do `amount` damage to each of that opponent's Pokémon.
+    DamageAllOpponentPokemonOnKnockout {
         amount: u32,
     },
     /// Team Rocket's Electrode's Destiny Burst and Pyukumuku's Innards Out: if this Pokémon is in

@@ -51,6 +51,15 @@ pub(crate) fn get_knockout_counterattack_damage(card: &PlayedCard) -> u32 {
     }
 }
 
+/// Spiritomb's Final Scream: the counterpart of `get_knockout_counterattack_damage` that hits
+/// every one of the attacker's Pokemon instead of just the Attacking one.
+pub(crate) fn get_knockout_splash_damage(card: &PlayedCard) -> u32 {
+    match get_ability_mechanic(&card.card) {
+        Some(AbilityMechanic::DamageAllOpponentPokemonOnKnockout { amount }) => *amount,
+        _ => 0,
+    }
+}
+
 /// Check if the defending Pokemon should poison the attacker when damaged.
 /// Returns true if the attacker should be poisoned.
 pub(crate) fn should_poison_attacker(card: &PlayedCard) -> bool {

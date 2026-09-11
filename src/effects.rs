@@ -25,6 +25,15 @@ pub enum CardEffect {
         attack_name: String,
         amount: u32,
     },
+    /// Toxicroak's Toxic and Toxapex's Severe Poison: while this Pokémon carries the Poison they
+    /// applied, each Pokémon Checkup deals `amount` instead of the usual 10. Cleared with the
+    /// Poison itself (see `PlayedCard::clear_status_condition`).
+    PoisonDamageAmount {
+        amount: u32,
+    },
+    /// Glimmora's Shattering Crystal: the coin came up heads, so the opponent gets no points for
+    /// knocking this Pokémon out.
+    DeniesPointsOnKnockout,
     PreventAllDamageAndEffects,
     /// Prevent all damage from attacks if the incoming damage is at most `threshold` (e.g. Cascoon's Harden).
     PreventDamageIfLessOrEqual {
@@ -89,6 +98,8 @@ pub enum CardEffect {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TurnEffect {
     NoSupportCards,
+    /// Malamar's Evolution Jammer: this player cannot play Pokémon from hand to evolve.
+    NoEvolvingFromHand,
     NoItemCards,
     NoTrainerCards,
     NoEnergyFromZoneToActive,

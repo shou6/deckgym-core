@@ -368,7 +368,12 @@ impl PlayedCard {
 
     pub(crate) fn clear_status_condition(&mut self, status: StatusCondition) {
         match status {
-            StatusCondition::Poisoned => self.poisoned = false,
+            StatusCondition::Poisoned => {
+                self.poisoned = false;
+                // The heavier Poison from Toxicroak and Toxapex goes away with the Poison itself.
+                self.effects
+                    .retain(|(effect, _)| !matches!(effect, CardEffect::PoisonDamageAmount { .. }));
+            }
             StatusCondition::Paralyzed => self.paralyzed = false,
             StatusCondition::Asleep => self.asleep = false,
             StatusCondition::Burned => self.burned = false,

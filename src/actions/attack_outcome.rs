@@ -398,6 +398,32 @@ impl AttackOutcomes {
         Self { branches }
     }
 
+    /// Append `effect` to every branch's post-damage step, keeping whatever was already there.
+    /// Used for defender abilities that only need to react after the damage lands (e.g.
+    /// Glimmora's Shattering Crystal), rather than splitting the branch.
+    pub fn with_post_damage_effect<F>(self, effect: F) -> Self
+    where
+        F: Fn(&mut StdRng, &mut State, &Action) + 'static,
+    {
+        let shared: SharedEffect = Rc::new(effect);
+        let branches = self
+            .branches
+            .into_iter()
+            .map(|mut branch| {
+                let previous_post = branch.outcome.post_damage_effect.take();
+                let shared = Rc::clone(&shared);
+                branch.outcome.post_damage_effect = Some(Rc::new(move |rng, state, action| {
+                    if let Some(post) = &previous_post {
+                        post(rng, state, action);
+                    }
+                    shared(rng, state, action);
+                }));
+                branch
+            })
+            .collect();
+        Self { branches }
+    }
+
     /// Apply the defender's "if this Pokémon would be Knocked Out by damage from an attack,
     /// flip a coin; if heads, it is not Knocked Out and its remaining HP becomes 10" ability
     /// (e.g. Ursaluna's Guts) to each opponent in-play slot in `guts_indices`.

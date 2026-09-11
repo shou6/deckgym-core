@@ -234,6 +234,13 @@ fn forecast_ability_by_mechanic(
             switch_out_opponent_active_to_bench()
         }
         AbilityMechanic::CoinFlipSleepOpponentActive => coin_flip_sleep_opponent_active(),
+        AbilityMechanic::CoinFlipPoisonOpponentActive => coin_flip_poison_opponent_active(),
+        AbilityMechanic::GatherTypedEnergyToSelf { energy_type } => {
+            gather_typed_energy_to_self(*energy_type)
+        }
+        AbilityMechanic::CoinFlipDenyPointsOnKnockout => {
+            panic!("CoinFlipDenyPointsOnKnockout is a passive ability")
+        }
         AbilityMechanic::DiscardFromHandToDrawCard => discard_from_hand_to_draw_card(),
         AbilityMechanic::ImmuneToStatusConditions => {
             panic!("ImmuneToStatusConditions is a passive ability")
@@ -298,6 +305,9 @@ fn forecast_ability_by_mechanic(
         }
         AbilityMechanic::CanEvolveOnFirstTurnIfActive => {
             panic!("CanEvolveOnFirstTurnIfActive is a passive ability")
+        }
+        AbilityMechanic::DamageAllOpponentPokemonOnKnockout { .. } => {
+            panic!("DamageAllOpponentPokemonOnKnockout is a passive ability")
         }
         AbilityMechanic::CounterattackDamageOnKnockout { .. } => {
             panic!("CounterattackDamageOnKnockout is a passive ability")
@@ -722,6 +732,44 @@ fn coin_flip_sleep_opponent_active() -> Outcomes {
         Box::new(|_, state, action| {
             let opponent = (action.actor + 1) % 2;
             state.apply_status_condition(opponent, 0, StatusCondition::Asleep);
+        }),
+        Box::new(|_, _, _| {}),
+    )
+}
+
+/// Tyranitar's Energy Plunder: every Energy of the type, from every one of this player's
+/// Pokemon, ends up on the one with the ability.
+fn gather_typed_energy_to_self(energy_type: EnergyType) -> Outcomes {
+    Outcomes::single_fn(move |_, state, action| {
+        let SimpleAction::UseAbility { in_play_idx } = action.action else {
+            return;
+        };
+        let sources: Vec<usize> = state
+            .enumerate_in_play_pokemon(action.actor)
+            .map(|(idx, _)| idx)
+            .filter(|idx| *idx != in_play_idx)
+            .collect();
+        let mut gathered = 0;
+        for source in sources {
+            if let Some(pokemon) = state.in_play_pokemon[action.actor][source].as_mut() {
+                let before = pokemon.attached_energy.len();
+                pokemon.attached_energy.retain(|e| *e != energy_type);
+                gathered += before - pokemon.attached_energy.len();
+            }
+        }
+        if let Some(pokemon) = state.in_play_pokemon[action.actor][in_play_idx].as_mut() {
+            pokemon
+                .attached_energy
+                .extend(std::iter::repeat_n(energy_type, gathered));
+        }
+    })
+}
+
+fn coin_flip_poison_opponent_active() -> Outcomes {
+    Outcomes::binary_coin(
+        Box::new(|_, state, action| {
+            let opponent = (action.actor + 1) % 2;
+            state.apply_status_condition(opponent, 0, StatusCondition::Poisoned);
         }),
         Box::new(|_, _, _| {}),
     )

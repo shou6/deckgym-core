@@ -169,7 +169,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "If this Pokémon has full HP, it takes -40 damage from attacks from your opponent's Pokémon.",
             AbilityMechanic::ReduceDamageIfFullHp { amount: 40 },
         );
-        // map.insert("If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 10 damage to each of your opponent's Pokémon.", todo_implementation);
+        map.insert(
+            "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 10 damage to each of your opponent's Pokémon.",
+            AbilityMechanic::DamageAllOpponentPokemonOnKnockout { amount: 10 },
+        );
         map.insert(
             "If this Pokémon is in the Active Spot and is Knocked Out by damage from an attack from your opponent's Pokémon, do 50 damage to the Attacking Pokémon.",
             AbilityMechanic::CounterattackDamageOnKnockout { amount: 50 },
@@ -343,7 +346,7 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             AbilityMechanic::CoinFlipSwitchOpponentBenchToActive,
         );
         map.insert("Once during your turn, you may flip a coin. If heads, your opponent's Active Pokémon is now Asleep.", AbilityMechanic::CoinFlipSleepOpponentActive);
-        // map.insert("Once during your turn, you may flip a coin. If heads, your opponent's Active Pokémon is now Poisoned.", todo_implementation);
+        map.insert("Once during your turn, you may flip a coin. If heads, your opponent's Active Pokémon is now Poisoned.", AbilityMechanic::CoinFlipPoisonOpponentActive);
         map.insert(
             "Once during your turn, you may heal 10 damage from each of your Pokémon.",
             AbilityMechanic::HealAllYourPokemon {
@@ -374,7 +377,12 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
             "Once during your turn, you may make your opponent's Active Pokémon Burned.",
             AbilityMechanic::BurnOpponentActive,
         );
-        // map.insert("Once during your turn, you may move all [D] Energy from each of your Pokémon to this Pokémon.", todo_implementation);
+        map.insert(
+            "Once during your turn, you may move all [D] Energy from each of your Pokémon to this Pokémon.",
+            AbilityMechanic::GatherTypedEnergyToSelf {
+                energy_type: EnergyType::Darkness,
+            },
+        );
         map.insert(
             "Once during your turn, you may move all [P] Energy from 1 of your Benched [P] Pokémon to your Active Pokémon.",
             AbilityMechanic::MoveAllTypedEnergyFromBenchToActive {
@@ -505,7 +513,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
                 attacker_types: vec![EnergyType::Fire, EnergyType::Water],
             },
         );
-        // map.insert("When this Pokémon is Knocked Out, flip a coin. If heads, your opponent can't get any points for it.", todo_implementation);
+        map.insert(
+            "When this Pokémon is Knocked Out, flip a coin. If heads, your opponent can't get any points for it.",
+            AbilityMechanic::CoinFlipDenyPointsOnKnockout,
+        );
         map.insert(
             "When this Pokémon is first damaged by an attack after coming into play, prevent that damage.",
             AbilityMechanic::PreventFirstAttack,

@@ -9,10 +9,10 @@ use crate::{
         effect_ability_mechanic_map::get_ability_mechanic, shared_mutations, SimpleAction,
     },
     card_ids::CardId,
-    effects::TurnEffect,
+    effects::{CardEffect, TurnEffect},
     hooks::{
-        get_counterattack_damage, get_knockout_counterattack_damage, modify_damage,
-        on_attack_knockout, on_end_turn, on_knockout, should_poison_attacker,
+        get_counterattack_damage, get_knockout_counterattack_damage, get_knockout_splash_damage,
+        modify_damage, on_attack_knockout, on_end_turn, on_knockout, should_poison_attacker,
         DamageModifierContext,
     },
     models::{Card, StatusCondition, TrainerType},
@@ -157,7 +157,19 @@ fn start_turn_ability_outcomes(state: &State, player: usize) -> (Probabilities, 
 fn get_poison_damage(state: &State, player: usize, in_play_idx: usize) -> u32 {
     use crate::actions::{abilities::AbilityMechanic, get_ability_mechanic};
 
-    let base_damage = 10;
+    // Toxicroak's Toxic and Toxapex's Severe Poison replace the usual amount outright.
+    let base_damage = state.in_play_pokemon[player][in_play_idx]
+        .as_ref()
+        .and_then(|pokemon| {
+            pokemon
+                .get_active_effects()
+                .iter()
+                .find_map(|effect| match effect {
+                    CardEffect::PoisonDamageAmount { amount } => Some(*amount),
+                    _ => None,
+                })
+        })
+        .unwrap_or(10);
 
     // Nihilego's More Poison ability only affects the active Pokemon
     if in_play_idx != 0 {
@@ -590,6 +602,12 @@ pub(crate) fn handle_damage_only(
             } else {
                 0
             };
+        let knockout_splash_damage =
+            if target_pokemon.get_remaining_hp() == 0 && attacking_player != target_player {
+                get_knockout_splash_damage(target_pokemon)
+            } else {
+                0
+            };
 
         // Apply counterattack damage and poison
         if counter_damage > 0 {
@@ -602,6 +620,20 @@ pub(crate) fn handle_damage_only(
                 counter_damage,
                 attacking_pokemon.get_remaining_hp()
             );
+        }
+
+        if knockout_splash_damage > 0 {
+            let splash_targets: Vec<usize> = state
+                .enumerate_in_play_pokemon(attacking_player)
+                .map(|(in_play_idx, _)| in_play_idx)
+                .collect();
+            for in_play_idx in splash_targets {
+                if let Some(pokemon) = state.in_play_pokemon[attacking_player][in_play_idx].as_mut()
+                {
+                    pokemon.apply_damage(knockout_splash_damage);
+                }
+            }
+            debug!("Final Scream: Dealt {knockout_splash_damage} damage to each opposing Pokemon");
         }
 
         if knockout_counter_damage > 0 {
@@ -712,15 +744,31 @@ pub(crate) fn handle_knockouts(
                 .as_ref()
                 .expect("Pokemon should be there if knocked out");
             let ko_initiator = (ko_receiver + 1) % 2;
-            let points_won = ko_pokemon.card.get_knockout_points();
+            // Glimmora's Shattering Crystal: the coin already came up heads, so this knockout
+            // is worth nothing.
+            let denies_points = ko_pokemon
+                .get_active_effects()
+                .iter()
+                .any(|effect| matches!(effect, CardEffect::DeniesPointsOnKnockout));
+            let points_won = if denies_points {
+                0
+            } else {
+                ko_pokemon.card.get_knockout_points()
+            };
             state.points[ko_initiator] += points_won;
             state.points_gained_this_turn[ko_initiator] += points_won;
+            state.own_knockouts_this_game[ko_receiver] =
+                state.own_knockouts_this_game[ko_receiver].saturating_add(1);
             debug!(
                 "Pokemon {:?} fainted. Player {} won {} points for a total of {}",
                 ko_pokemon, ko_initiator, points_won, state.points[ko_initiator]
             );
             // Iris bonus: 1 extra point if Haxorus KOs opponent's Active Pokemon
-            if iris_bonus_active && ko_pokemon_idx == 0 && ko_receiver != attacking_ref.0 {
+            if iris_bonus_active
+                && !denies_points
+                && ko_pokemon_idx == 0
+                && ko_receiver != attacking_ref.0
+            {
                 state.points[ko_initiator] += 1;
                 state.points_gained_this_turn[ko_initiator] += 1;
                 debug!(

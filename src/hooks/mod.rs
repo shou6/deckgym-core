@@ -27,6 +27,7 @@ pub use core::to_playable_card;
 pub(crate) use core::DamageModifierContext;
 pub(crate) use counterattack::get_counterattack_damage;
 pub(crate) use counterattack::get_knockout_counterattack_damage;
+pub(crate) use counterattack::get_knockout_splash_damage;
 pub(crate) use counterattack::should_poison_attacker;
 pub(crate) use retreat::can_retreat;
 pub(crate) use retreat::{get_retreat_cost, get_retreat_cost_for};

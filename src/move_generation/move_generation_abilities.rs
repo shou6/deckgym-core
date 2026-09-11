@@ -149,6 +149,9 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::CheckupDamageToAllOpponentPokemon { .. } => false,   // Passive ability
         AbilityMechanic::BadDreamsEndOfTurn { .. } => false,                  // Passive ability
         AbilityMechanic::CoinFlipSleepOpponentActive => !card.ability_used,
+        AbilityMechanic::CoinFlipPoisonOpponentActive => !card.ability_used,
+        AbilityMechanic::GatherTypedEnergyToSelf { .. } => !card.ability_used,
+        AbilityMechanic::CoinFlipDenyPointsOnKnockout => false,
         AbilityMechanic::DiscardEnergyToIncreaseTypeDamage { discard_energy, .. } => {
             !card.ability_used && card.attached_energy.contains(discard_energy)
         }
@@ -202,6 +205,7 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::CanEvolveOnFirstTurnIfActive => false,
         AbilityMechanic::CounterattackDamage { .. } => false,
         AbilityMechanic::CounterattackDamageOnKnockout { .. } => false, // Passive (damage path)
+        AbilityMechanic::DamageAllOpponentPokemonOnKnockout { .. } => false, // Passive (damage path)
         AbilityMechanic::ReduceDamageIfFullHp { .. } => false,
         AbilityMechanic::PreventAllAttackEffects => false,
         AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { .. } => false,

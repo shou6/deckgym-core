@@ -94,6 +94,10 @@ pub struct State {
     pub(crate) has_used_victory_star: [bool; 2],
     /// Gholdengo's Luxury Coin, the Trainer-card counterpart of Victory Star.
     pub(crate) has_used_luxury_coin: [bool; 2],
+    /// How many of each player's own Pokemon have been Knocked Out so far this game. Kingambit's
+    /// Overlord's Blade counts them; `points` cannot stand in for it because a Pokemon ex is
+    /// worth 2 points but is still one knockout.
+    pub(crate) own_knockouts_this_game: [u8; 2],
     // Set when an eligible coin-flip attack has been flipped but not yet committed, while the
     // acting player decides whether to invoke Victory Star. Holds plain data only (no closures),
     // so `State` stays Clone/Hash/Eq for the search-based players.
@@ -145,6 +149,7 @@ impl State {
             has_used_stadium: [false, false],
             has_used_victory_star: [false, false],
             has_used_luxury_coin: [false, false],
+            own_knockouts_this_game: [0, 0],
             pending_coin_reflip: None,
 
             knocked_out_by_opponent_attack_this_turn: false,
@@ -474,6 +479,15 @@ impl State {
 
     pub(crate) fn mark_luxury_coin_used(&mut self, player: usize) {
         self.has_used_luxury_coin[player] = true;
+    }
+
+    /// Test hook mirroring `set_points_gained_last_turn`.
+    pub fn set_own_knockouts_this_game(&mut self, player: usize, count: u8) {
+        self.own_knockouts_this_game[player] = count;
+    }
+
+    pub(crate) fn own_knockouts_this_game(&self, player: usize) -> u8 {
+        self.own_knockouts_this_game[player]
     }
 
     pub(crate) fn set_pending_will_first_heads(&mut self) {

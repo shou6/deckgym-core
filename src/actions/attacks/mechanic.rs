@@ -241,6 +241,12 @@ pub enum Mechanic {
         minimum_types: usize,
         extra_damage: u32,
     },
+    /// Grafaiai's Colorful Attack: like `ExtraDamageIfDifferentEnergyTypesAttached`, but the
+    /// types are counted across all of this player's Pokémon in play.
+    ExtraDamageIfDifferentEnergyTypesInPlay {
+        minimum_types: usize,
+        extra_damage: u32,
+    },
     ExtraDamageIfTypeEnergyInPlay {
         energy_type: EnergyType,
         minimum_count: usize,
@@ -921,6 +927,48 @@ pub enum Mechanic {
     ExtraDamageIfDefenderNameContains {
         name_part: String,
         extra_damage: u32,
+    },
+    /// Guzzlord's Breakcore: on heads the opponent's Active Pokémon goes straight to the discard
+    /// pile. It counts as a knockout, so the points are awarded the usual way.
+    CoinFlipDiscardOpponentActive,
+    /// Sableye's Jeweled Gift: take one Energy of a random type from among `energy_types` out of
+    /// the Energy Zone and attach it to 1 of your Benched Pokémon (your choice).
+    RandomTypedEnergyFromZoneToBenched {
+        energy_types: Vec<EnergyType>,
+    },
+    /// Liepard's Snatch and Flee: the opponent shuffles a random card from hand into their deck,
+    /// and this Pokémon shuffles itself back into its owner's deck.
+    ShuffleOpponentHandCardAndSelfIntoDeck,
+    /// Kingambit's Overlord's Blade: extra damage for each of your own Pokémon that has been
+    /// Knocked Out this game.
+    ExtraDamagePerOwnKnockout {
+        damage_per: u32,
+    },
+    /// Alolan Raticate's Scrounge-and-Scarf and Alolan Meowth's Meddle: discard one random card
+    /// of `trainer_type` from the opponent's hand.
+    DiscardRandomOpponentHandTrainer {
+        trainer_type: TrainerType,
+    },
+    /// Purrloin's Playful Knockdown: knock every Pokémon Tool off the opponent's Active Pokémon.
+    DiscardToolsFromOpponentActive,
+    /// Alolan Muk ex's Chemical Panic: one Special Condition the defender does not already have,
+    /// picked at random.
+    RandomStatusConditionToDefender {
+        options: Vec<StatusCondition>,
+    },
+    /// Swalot's Swallow Up: extra damage while the opponent's Active Pokémon has strictly less
+    /// remaining HP than the attacker.
+    ExtraDamageIfDefenderHasLessHp {
+        extra_damage: u32,
+    },
+    /// Team Rocket's Muk's Poison Absorption: heal the attacker if the defender is Poisoned.
+    HealSelfIfDefenderPoisoned {
+        amount: u32,
+    },
+    /// Toxicroak's Toxic and Toxapex's Severe Poison: Poison the defender, and make that Poison
+    /// bite for `amount` instead of the usual 10.
+    PoisonWithDamageAmount {
+        amount: u32,
     },
     /// Groudon - Gaia Blast: discard `count` random Energy from among everything
     /// attached to the attacker's own Pokemon.

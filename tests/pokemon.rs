@@ -74,6 +74,9 @@ mod cradily_stick_and_absorb_test;
 mod crawdaunt_unruly_claw_test;
 #[path = "pokemon/croagunk_toxicroak_test.rs"]
 mod croagunk_toxicroak_test;
+#[path = "pokemon/darkness_batch_test.rs"]
+mod darkness_batch_test;
+
 #[path = "pokemon/darkrai_ex_test.rs"]
 mod darkrai_ex_test;
 #[path = "pokemon/dedenne_surskit_test.rs"]
