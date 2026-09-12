@@ -104,7 +104,10 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
                 amount: 30,
             },
         );
-        // map.insert("Basic Pokémon in play (both yours and your opponent's) have no Abilities.", todo_implementation);
+        map.insert(
+            "Basic Pokémon in play (both yours and your opponent's) have no Abilities.",
+            AbilityMechanic::NoAbilitiesForBasics,
+        );
         map.insert(
             "During Pokémon Checkup, if this Pokémon is in the Active Spot, do 10 damage to your opponent's Active Pokémon.",
             AbilityMechanic::CheckupDamageToOpponentActive { amount: 10 },
@@ -654,7 +657,6 @@ pub static EFFECT_ABILITY_MECHANIC_MAP: LazyLock<HashMap<&'static str, AbilityMe
         );
 
         // B2 and B2a mechanics
-        // map.insert("Basic Pokémon in play (both yours and your opponent's) have no Abilities.", todo_implementation);
         map.insert(
             "If this Pokémon's remaining HP is 50 or less, attacks used by this Pokémon do +60 damage to your opponent's Active Pokémon.",
             AbilityMechanic::IncreaseDamageWhenRemainingHpAtMost {
@@ -786,7 +788,7 @@ pub fn ability_mechanic_from_effect(effect: &str) -> Option<&'static AbilityMech
     EFFECT_ABILITY_MECHANIC_MAP.get(effect)
 }
 
-pub fn get_ability_mechanic(card: &Card) -> Option<&'static AbilityMechanic> {
+pub fn printed_ability_mechanic(card: &Card) -> Option<&'static AbilityMechanic> {
     let Card::Pokemon(pokemon) = card else {
         return None;
     };
@@ -798,7 +800,7 @@ pub fn get_ability_mechanic(card: &Card) -> Option<&'static AbilityMechanic> {
 }
 
 pub fn has_ability_mechanic(card: &Card, mechanic: &AbilityMechanic) -> bool {
-    get_ability_mechanic(card) == Some(mechanic)
+    printed_ability_mechanic(card) == Some(mechanic)
 }
 
 /// Translate a *self-scoped defensive* passive ability mechanic into the `CardEffect` it presents

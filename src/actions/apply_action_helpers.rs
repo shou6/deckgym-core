@@ -5,8 +5,7 @@ use rand::rngs::StdRng;
 
 use crate::{
     actions::{
-        abilities::AbilityMechanic, ability_mechanic_from_effect,
-        effect_ability_mechanic_map::get_ability_mechanic, shared_mutations, SimpleAction,
+        abilities::AbilityMechanic, ability_mechanic_from_effect, shared_mutations, SimpleAction,
     },
     card_ids::CardId,
     effects::{CardEffect, TurnEffect},
@@ -155,7 +154,7 @@ fn start_turn_ability_outcomes(state: &State, player: usize) -> (Probabilities, 
 /// Calculate poison damage based on base damage (10) plus +10 for each opponent's Nihilego with More Poison ability
 /// Only applies the bonus if the poisoned Pokemon is in the active spot (index 0)
 fn get_poison_damage(state: &State, player: usize, in_play_idx: usize) -> u32 {
-    use crate::actions::{abilities::AbilityMechanic, get_ability_mechanic};
+    use crate::actions::abilities::AbilityMechanic;
 
     // Toxicroak's Toxic and Toxapex's Severe Poison replace the usual amount outright.
     let base_damage = state.in_play_pokemon[player][in_play_idx]
@@ -181,7 +180,7 @@ fn get_poison_damage(state: &State, player: usize, in_play_idx: usize) -> u32 {
         .enumerate_in_play_pokemon(opponent)
         .filter(|(_, pokemon)| {
             matches!(
-                get_ability_mechanic(&pokemon.card),
+                state.ability_mechanic(pokemon),
                 Some(AbilityMechanic::IncreasePoisonDamage { amount: 10 })
             )
         })
@@ -337,18 +336,16 @@ fn finish_turn_after_checkup(state: &mut State, rng: &mut StdRng) {
 /// has more than one in play), healing every one of that ability's owner's in-play Pokémon
 /// (Active and Benched).
 fn apply_checkup_healing_abilities(state: &mut State) {
+    let read: &State = state;
     let healers: Vec<(usize, u32)> = (0..2)
         .flat_map(|player| {
-            state
-                .enumerate_in_play_pokemon(player)
-                .filter_map(
-                    move |(_, pokemon)| match get_ability_mechanic(&pokemon.card) {
-                        Some(AbilityMechanic::HealAllYourPokemonDuringCheckup { amount }) => {
-                            Some((player, *amount))
-                        }
-                        _ => None,
-                    },
-                )
+            read.enumerate_in_play_pokemon(player)
+                .filter_map(move |(_, pokemon)| match read.ability_mechanic(pokemon) {
+                    Some(AbilityMechanic::HealAllYourPokemonDuringCheckup { amount }) => {
+                        Some((player, *amount))
+                    }
+                    _ => None,
+                })
         })
         .collect();
 
@@ -375,7 +372,7 @@ fn apply_snowy_terrain_checkup_damage(state: &mut State) {
         if active.is_knocked_out() {
             continue;
         }
-        match get_ability_mechanic(&active.card) {
+        match state.ability_mechanic(active) {
             Some(AbilityMechanic::CheckupDamageToOpponentActive { amount }) => {
                 active_only_damage.push((player, *amount));
             }
@@ -448,17 +445,22 @@ fn checkapply_prevent_first_attack(
         return false;
     }
 
-    if let Some(target_pokemon) = state.in_play_pokemon[target_player][target_pokemon_idx].as_mut()
-    {
-        if !target_pokemon.prevent_first_attack_damage_used {
-            if let Some(AbilityMechanic::PreventFirstAttack) =
-                get_ability_mechanic(&target_pokemon.card)
-            {
-                debug!("PreventFirstAttackDamageAfterEnteringPlay: Preventing first attack damage");
-                target_pokemon.prevent_first_attack_damage_used = true;
-                return true;
-            }
-        }
+    let should_prevent = state.in_play_pokemon[target_player][target_pokemon_idx]
+        .as_ref()
+        .is_some_and(|target_pokemon| {
+            !target_pokemon.prevent_first_attack_damage_used
+                && matches!(
+                    state.ability_mechanic(target_pokemon),
+                    Some(AbilityMechanic::PreventFirstAttack)
+                )
+        });
+    if should_prevent {
+        debug!("PreventFirstAttackDamageAfterEnteringPlay: Preventing first attack damage");
+        let target_pokemon = state.in_play_pokemon[target_player][target_pokemon_idx]
+            .as_mut()
+            .expect("Pokemon was there a moment ago");
+        target_pokemon.prevent_first_attack_damage_used = true;
+        return true;
     }
     false
 }
@@ -480,7 +482,7 @@ pub(crate) fn guts_would_flip(
         return false;
     };
     if !matches!(
-        get_ability_mechanic(&pokemon.card),
+        state.ability_mechanic(pokemon),
         Some(AbilityMechanic::CoinFlipToSurviveKnockOut)
     ) {
         return false;
@@ -605,25 +607,25 @@ pub(crate) fn handle_damage_only(
             .expect("Pokemon should be there if taking damage");
         let counter_damage = {
             if target_pokemon_idx == 0 {
-                get_counterattack_damage(target_pokemon)
+                get_counterattack_damage(state, target_pokemon)
             } else {
                 0
             }
         };
-        let should_poison = should_poison_attacker(target_pokemon);
+        let should_poison = should_poison_attacker(state, target_pokemon);
         let should_bounce = should_bounce_attackers_hand_card(target_pokemon);
         // Destiny Burst / Innards Out: the defender hits back as it faints. Measured here rather
         // than from the knockout hook so that a retaliation K.O. is collected in the same pass as
         // the K.O. that triggered it.
         let knockout_counter_damage =
             if target_pokemon.get_remaining_hp() == 0 && attacking_player != target_player {
-                get_knockout_counterattack_damage(target_pokemon)
+                get_knockout_counterattack_damage(state, target_pokemon)
             } else {
                 0
             };
         let knockout_splash_damage =
             if target_pokemon.get_remaining_hp() == 0 && attacking_player != target_player {
-                get_knockout_splash_damage(target_pokemon)
+                get_knockout_splash_damage(state, target_pokemon)
             } else {
                 0
             };
@@ -696,7 +698,7 @@ fn apply_bouncy_body(state: &mut State, target_player: usize) {
     let Some(AbilityMechanic::AttachEnergyFromZoneToBenchedOnDamaged { energy_type }) = state
         .in_play_pokemon[target_player][0]
         .as_ref()
-        .and_then(|active| get_ability_mechanic(&active.card))
+        .and_then(|active| state.ability_mechanic(active))
     else {
         return;
     };

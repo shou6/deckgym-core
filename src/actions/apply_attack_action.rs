@@ -14,7 +14,7 @@ use crate::{
         attacks::{BenchSide, CopyAttackSource, Mechanic},
         effect_ability_mechanic_map::ability_mechanic_from_effect,
         effect_mechanic_map::EFFECT_MECHANIC_MAP,
-        get_ability_mechanic, selectable_status_conditions, Action,
+        selectable_status_conditions, Action,
     },
     card_ids::CardId,
     combinatorics::generate_combinations,
@@ -138,7 +138,7 @@ fn apply_defender_damage_prevention_if_needed(
         .filter(|(idx, _)| !(ignores_active_effects && *idx == 0))
         .filter_map(|(idx, pokemon)| {
             pokemon
-                .get_effective_card_effects()
+                .get_effective_card_effects(state.abilities_are_off(pokemon))
                 .iter()
                 .find_map(|e| match e {
                     CardEffect::CoinFlipToPreventIncomingDamage => Some(u32::MAX),
@@ -203,7 +203,7 @@ fn apply_defender_point_denial_if_needed(
         .enumerate_in_play_pokemon(opponent)
         .filter(|(_, pokemon)| {
             matches!(
-                get_ability_mechanic(&pokemon.card),
+                state.ability_mechanic(pokemon),
                 Some(AbilityMechanic::CoinFlipDenyPointsOnKnockout)
             )
         })
@@ -239,7 +239,7 @@ fn apply_defender_perish_body_if_needed(
         .as_ref()
         .is_some_and(|p| {
             matches!(
-                get_ability_mechanic(&p.card),
+                state.ability_mechanic(p),
                 Some(AbilityMechanic::CoinFlipKnockOutAttackerOnKnockout)
             )
         });

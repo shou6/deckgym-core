@@ -324,6 +324,9 @@ pub enum AbilityMechanic {
     CannotAttackWithoutBenched {
         pokemon_names: Vec<String>,
     },
+    /// Alolan Muk's Power of Alchemy: "Basic Pokémon in play (both yours and your opponent's)
+    /// have no Abilities." Alolan Muk is a Stage 1, so it never silences itself.
+    NoAbilitiesForBasics,
     /// The Urshifu pair's Double Type: "As long as this Pokémon is in play, it is [X] and [Y]
     /// type." Read by `PlayedCard::types`.
     DoubleType {

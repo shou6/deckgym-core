@@ -1,7 +1,7 @@
 use crate::{
     actions::{
-        abilities::AbilityMechanic, ability_mechanic_from_effect, apply_evolve,
-        get_ability_mechanic, handle_damage_only, handle_knockouts,
+        abilities::AbilityMechanic, ability_mechanic_from_effect, apply_evolve, handle_damage_only,
+        handle_knockouts,
     },
     effects::TurnEffect,
     hooks::{can_evolve_into, DamageModifierContext},
@@ -101,7 +101,7 @@ impl State {
             let pokemon = self.in_play_pokemon[actor][in_play_idx]
                 .as_ref()
                 .expect("Pokemon should be there if attaching energy to it");
-            get_ability_mechanic(&pokemon.card).cloned()
+            self.ability_mechanic(pokemon).cloned()
         };
 
         if from_zone {

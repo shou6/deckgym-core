@@ -1,5 +1,5 @@
 use crate::{
-    actions::{abilities::AbilityMechanic, get_ability_mechanic},
+    actions::abilities::AbilityMechanic,
     card_ids::CardId,
     effects::{CardEffect, TurnEffect},
     models::{Card, EnergyType, PlayedCard},
@@ -38,7 +38,7 @@ pub(crate) fn get_retreat_cost_for(
 ) -> Vec<EnergyType> {
     if let Card::Pokemon(pokemon_card) = &card.card {
         if matches!(
-            get_ability_mechanic(&card.card),
+            state.ability_mechanic(card),
             Some(AbilityMechanic::NoRetreatIfHasEnergy)
         ) && !card.attached_energy.is_empty()
         {
@@ -46,7 +46,7 @@ pub(crate) fn get_retreat_cost_for(
         }
         // Heatran: free while its owner has an Arceus in play.
         if matches!(
-            get_ability_mechanic(&card.card),
+            state.ability_mechanic(card),
             Some(AbilityMechanic::NoRetreatIfArceusInPlay)
         ) && state
             .enumerate_in_play_pokemon(owner)
@@ -56,7 +56,7 @@ pub(crate) fn get_retreat_cost_for(
         }
         // Wimpod - Wimp Out: free only while it is still its owner's first turn.
         if matches!(
-            get_ability_mechanic(&card.card),
+            state.ability_mechanic(card),
             Some(AbilityMechanic::NoRetreatOnYourFirstTurn)
         ) && state.is_users_first_turn()
         {
@@ -65,7 +65,7 @@ pub(crate) fn get_retreat_cost_for(
         // Jumpluff - Fluffy Flight frees its owner's Active from anywhere in play.
         if state.enumerate_in_play_pokemon(owner).any(|(_, pokemon)| {
             matches!(
-                get_ability_mechanic(&pokemon.card),
+                state.ability_mechanic(pokemon),
                 Some(AbilityMechanic::NoRetreatForYourActive)
             )
         }) {
@@ -73,7 +73,7 @@ pub(crate) fn get_retreat_cost_for(
         }
         // Latios - Fantastical Floating: free while the named partner is in play.
         if let Some(AbilityMechanic::NoRetreatIfNamedPokemonInPlay { pokemon_name }) =
-            get_ability_mechanic(&card.card)
+            state.ability_mechanic(card)
         {
             if state
                 .enumerate_in_play_pokemon(owner)
@@ -84,7 +84,7 @@ pub(crate) fn get_retreat_cost_for(
         }
         // Alolan Raichu - Surge Surfer: free while any Stadium is on the table.
         if matches!(
-            get_ability_mechanic(&card.card),
+            state.ability_mechanic(card),
             Some(AbilityMechanic::NoRetreatIfStadiumInPlay)
         ) && state.active_stadium.is_some()
         {
@@ -93,7 +93,7 @@ pub(crate) fn get_retreat_cost_for(
         // Tatsugiri - Retreat Directive frees its owner's Active, but only the named Pokemon.
         if state.enumerate_in_play_pokemon(owner).any(|(_, pokemon)| {
             matches!(
-                get_ability_mechanic(&pokemon.card),
+                state.ability_mechanic(pokemon),
                 Some(AbilityMechanic::NoRetreatForYourActiveNamed { pokemon_name })
                     if *pokemon_name == card.get_name()
             )
@@ -102,7 +102,7 @@ pub(crate) fn get_retreat_cost_for(
         }
         let mut normal_cost = pokemon_card.retreat_cost.clone();
         let retreat_cost_increase: u8 = card
-            .get_effective_card_effects()
+            .get_effective_card_effects(state.abilities_are_off(card))
             .iter()
             .map(|effect| match effect {
                 CardEffect::IncreasedRetreatCost { amount } => *amount,
@@ -142,7 +142,7 @@ pub(crate) fn get_retreat_cost_for(
             // Only affects Basic Pokemon
             for (_idx, benched_pokemon) in state.enumerate_bench_pokemon(owner) {
                 if matches!(
-                    get_ability_mechanic(&benched_pokemon.card),
+                    state.ability_mechanic(benched_pokemon),
                     Some(
                         AbilityMechanic::ReduceRetreatCostOfYourActiveBasicFromBench { amount: 1 }
                     )
@@ -155,7 +155,7 @@ pub(crate) fn get_retreat_cost_for(
             if let Some(AbilityMechanic::ReduceRetreatCostOfYourActiveTypedFromBench {
                 energy_type,
                 amount,
-            }) = get_ability_mechanic(&benched_pokemon.card)
+            }) = state.ability_mechanic(benched_pokemon)
             {
                 if card.is_type(*energy_type) {
                     to_subtract += *amount as u8;
@@ -170,7 +170,7 @@ pub(crate) fn get_retreat_cost_for(
 
         // Beldum - Conductive Body: cheaper while another Pokemon of the same name is in play.
         if let Some(AbilityMechanic::ReduceRetreatCostIfAnotherSameNameInPlay { amount }) =
-            get_ability_mechanic(&card.card)
+            state.ability_mechanic(card)
         {
             let name = card.get_name();
             let same_name = state
@@ -193,7 +193,7 @@ pub(crate) fn get_retreat_cost_for(
         let facing = (owner + 1) % 2;
         for (_idx, pokemon) in state.enumerate_in_play_pokemon(facing) {
             if matches!(
-                get_ability_mechanic(&pokemon.card),
+                state.ability_mechanic(pokemon),
                 Some(AbilityMechanic::IncreaseRetreatCostForOpponentActive { amount: 1 })
             ) {
                 normal_cost.push(EnergyType::Colorless);

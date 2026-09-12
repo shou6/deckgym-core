@@ -1,8 +1,5 @@
 use crate::{
-    actions::{
-        abilities::AbilityMechanic, attacks::Mechanic, get_ability_mechanic, has_ability_mechanic,
-        SimpleAction, EFFECT_MECHANIC_MAP,
-    },
+    actions::{abilities::AbilityMechanic, attacks::Mechanic, SimpleAction, EFFECT_MECHANIC_MAP},
     card_ids::CardId,
     effects::CardEffect,
     hooks::{contains_energy, get_attack_cost},
@@ -16,7 +13,7 @@ pub(crate) fn generate_attack_actions(state: &State) -> Vec<SimpleAction> {
     // Regigigas's Seal of Antiquity: no attacks at all without its partners on the Bench.
     if let Some(active) = state.in_play_pokemon[current_player][0].as_ref() {
         if let Some(AbilityMechanic::CannotAttackWithoutBenched { pokemon_names }) =
-            get_ability_mechanic(&active.card)
+            state.ability_mechanic(active)
         {
             let all_present = pokemon_names.iter().all(|name| {
                 state
@@ -90,7 +87,7 @@ pub(crate) fn generate_attack_actions(state: &State) -> Vec<SimpleAction> {
 fn time_recall_attacks(state: &State, player: usize, active_pokemon: &PlayedCard) -> Vec<Attack> {
     let time_recall_active = state
         .enumerate_in_play_pokemon(player)
-        .any(|(_, pokemon)| has_ability_mechanic(&pokemon.card, &AbilityMechanic::TimeRecall));
+        .any(|(_, pokemon)| state.has_ability(pokemon, &AbilityMechanic::TimeRecall));
     // Memory Light does the same thing for the one Pokemon it is attached to.
     let has_memory_light = has_tool(active_pokemon, CardId::A4a068MemoryLight);
     if !time_recall_active && !has_memory_light {

@@ -1,3 +1,6 @@
+#[path = "pokemon/ability_lock_test.rs"]
+mod ability_lock_test;
+
 #[path = "pokemon/abomasnow_vigor_link_test.rs"]
 mod abomasnow_vigor_link_test;
 #[path = "pokemon/accelgor_deck_and_cover_test.rs"]

@@ -28,6 +28,12 @@ fn can_use_ability(state: &State, (in_play_index, card): (usize, &PlayedCard)) -
         return false;
     }
 
+    // Budew's Prickly Powder / Alolan Muk's Power of Alchemy switch an Ability off entirely,
+    // so a silenced Pokémon is never offered one.
+    if state.abilities_are_off(card) {
+        return false;
+    }
+
     let mechanic = card
         .card
         .get_ability()
@@ -162,6 +168,7 @@ fn can_use_ability_by_mechanic(
         AbilityMechanic::AllowTwoTools => false,
         AbilityMechanic::HealBlock => false,
         AbilityMechanic::DoubleType { .. } => false,
+        AbilityMechanic::NoAbilitiesForBasics => false,
         AbilityMechanic::ImmuneToStatusCondition { .. } => false,
         AbilityMechanic::CoinFlipPoisonOpponentActive => !card.ability_used,
         AbilityMechanic::GatherTypedEnergyToSelf { .. } => !card.ability_used,

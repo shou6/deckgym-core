@@ -256,6 +256,9 @@ fn forecast_ability_by_mechanic(
         AbilityMechanic::AllowTwoTools => panic!("AllowTwoTools is a passive ability"),
         AbilityMechanic::HealBlock => panic!("HealBlock is a passive ability"),
         AbilityMechanic::DoubleType { .. } => panic!("DoubleType is a passive ability"),
+        AbilityMechanic::NoAbilitiesForBasics => {
+            panic!("NoAbilitiesForBasics is a passive ability")
+        }
         AbilityMechanic::ImmuneToStatusCondition { .. } => {
             panic!("ImmuneToStatusCondition is a passive ability")
         }

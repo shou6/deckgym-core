@@ -3171,7 +3171,17 @@ pub static EFFECT_MECHANIC_MAP: LazyLock<HashMap<&'static str, Mechanic>> = Lazy
             damage_per: 20,
         },
     );
-    // map.insert("The Defending Pokémon loses all Abilities. This effect lasts until the Defending Pokémon leaves the Active Spot.", todo_implementation);
+    map.insert(
+        "The Defending Pokémon loses all Abilities. This effect lasts until the Defending Pokémon leaves the Active Spot.",
+        Mechanic::DamageAndCardEffect {
+            opponent: true,
+            effect: CardEffect::NoAbilities,
+            // Effects are cleared when a Pokémon leaves the Active Spot, which is exactly how
+            // long this one lasts.
+            duration: u8::MAX,
+            coin_flip: false,
+        },
+    );
     map.insert(
         "This attack does 30 damage for each of your Benched [D] Pokémon.",
         Mechanic::BenchCountDamage {

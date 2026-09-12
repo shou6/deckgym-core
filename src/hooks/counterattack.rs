@@ -1,13 +1,14 @@
 use crate::{
-    actions::{abilities::AbilityMechanic, get_ability_mechanic},
+    actions::abilities::AbilityMechanic,
     card_ids::CardId,
     effects::CardEffect,
     models::{EnergyType, PlayedCard},
     tools::has_tool,
+    State,
 };
 
 /// Some cards counterattack either because of RockyHelmet or because of their own ability.
-pub(crate) fn get_counterattack_damage(card: &PlayedCard) -> u32 {
+pub(crate) fn get_counterattack_damage(state: &State, card: &PlayedCard) -> u32 {
     let mut total_damage = 0;
     if has_tool(card, CardId::A2148RockyHelmet) {
         total_damage += 20;
@@ -24,6 +25,9 @@ pub(crate) fn get_counterattack_damage(card: &PlayedCard) -> u32 {
         .sum::<u32>();
 
     // Some cards have it as an ability
+    if state.abilities_are_off(card) {
+        return total_damage;
+    }
     let card_id = CardId::from_card_id(&card.card.get_id());
     match card_id {
         Some(CardId::A1061Poliwrath)
@@ -44,8 +48,8 @@ pub(crate) fn get_counterattack_damage(card: &PlayedCard) -> u32 {
 /// Destiny Burst / Innards Out: a Pokémon that faints in the Active Spot from an opponent's
 /// attack hits the Attacking Pokémon back. Unlike `get_counterattack_damage` this only applies
 /// when the damage was lethal, so the caller must check the remaining HP first.
-pub(crate) fn get_knockout_counterattack_damage(card: &PlayedCard) -> u32 {
-    match get_ability_mechanic(&card.card) {
+pub(crate) fn get_knockout_counterattack_damage(state: &State, card: &PlayedCard) -> u32 {
+    match state.ability_mechanic(card) {
         Some(AbilityMechanic::CounterattackDamageOnKnockout { amount }) => *amount,
         _ => 0,
     }
@@ -53,8 +57,8 @@ pub(crate) fn get_knockout_counterattack_damage(card: &PlayedCard) -> u32 {
 
 /// Spiritomb's Final Scream: the counterpart of `get_knockout_counterattack_damage` that hits
 /// every one of the attacker's Pokemon instead of just the Attacking one.
-pub(crate) fn get_knockout_splash_damage(card: &PlayedCard) -> u32 {
-    match get_ability_mechanic(&card.card) {
+pub(crate) fn get_knockout_splash_damage(state: &State, card: &PlayedCard) -> u32 {
+    match state.ability_mechanic(card) {
         Some(AbilityMechanic::DamageAllOpponentPokemonOnKnockout { amount }) => *amount,
         _ => 0,
     }
@@ -68,12 +72,15 @@ pub(crate) fn should_bounce_attackers_hand_card(card: &PlayedCard) -> bool {
 
 /// Check if the defending Pokemon should poison the attacker when damaged.
 /// Returns true if the attacker should be poisoned.
-pub(crate) fn should_poison_attacker(card: &PlayedCard) -> bool {
+pub(crate) fn should_poison_attacker(state: &State, card: &PlayedCard) -> bool {
     if has_tool(card, CardId::A3146PoisonBarb) {
         return true;
     }
 
     // Some cards have it as an ability (Dragalge ex's Poison Point)
+    if state.abilities_are_off(card) {
+        return false;
+    }
     let card_id = CardId::from_card_id(&card.card.get_id());
     match card_id {
         Some(CardId::B1160DragalgeEx)

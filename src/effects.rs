@@ -45,6 +45,10 @@ pub enum CardEffect {
     DamageNewActiveOnOpponentRetreat {
         amount: u32,
     },
+    /// Budew's Prickly Powder: this Pokémon's Abilities do nothing. Read *only* from the raw
+    /// effect list (`PlayedCard::abilities_off_by_effect`) - deriving it through
+    /// `get_effective_card_effects` would recurse, because that one reads Abilities.
+    NoAbilities,
     PreventAllDamageAndEffects,
     /// Prevent all damage from attacks if the incoming damage is at most `threshold` (e.g. Cascoon's Harden).
     PreventDamageIfLessOrEqual {

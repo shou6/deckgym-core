@@ -1,5 +1,5 @@
 use crate::{
-    actions::{abilities::AbilityMechanic, get_ability_mechanic, SimpleAction},
+    actions::{abilities::AbilityMechanic, SimpleAction},
     card_ids::CardId,
     card_logic::{
         active_has_psychic_attack, can_rare_candy_evolve, diantha_targets, ilima_targets,
@@ -411,7 +411,7 @@ fn can_play_stadium(state: &State, trainer_card: &TrainerCard) -> Option<Vec<Sim
             .as_ref()
             .is_some_and(|opponent_active| {
                 matches!(
-                    get_ability_mechanic(&opponent_active.card),
+                    state.ability_mechanic(opponent_active),
                     Some(AbilityMechanic::NoOpponentStadiumInActive)
                 )
             });

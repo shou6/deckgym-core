@@ -4,10 +4,7 @@ use std::vec;
 use log::debug;
 
 use crate::{
-    actions::{
-        abilities::AbilityMechanic, ability_mechanic_from_effect, get_ability_mechanic,
-        SimpleAction,
-    },
+    actions::{abilities::AbilityMechanic, ability_mechanic_from_effect, SimpleAction},
     card_ids::CardId,
     effects::{CardEffect, TurnEffect},
     models::{
@@ -120,7 +117,7 @@ pub(crate) fn can_evolve_into(evolution_card: &Card, base_pokemon: &PlayedCard) 
 pub(crate) fn on_evolve(
     actor: usize,
     state: &mut State,
-    to_card: &Card,
+    _to_card: &Card,
     in_play_idx: usize,
     from_hand: bool,
 ) {
@@ -128,7 +125,12 @@ pub(crate) fn on_evolve(
         return;
     }
 
-    match get_ability_mechanic(to_card) {
+    // Read off the board, so an Ability silenced by Alolan Muk / Budew does not trigger.
+    let mechanic = state.in_play_pokemon[actor][in_play_idx]
+        .as_ref()
+        .and_then(|pokemon| state.ability_mechanic(pokemon))
+        .cloned();
+    match mechanic.as_ref() {
         Some(AbilityMechanic::RecoverSupporterFromDiscardOnEvolve) => {
             state.move_generation_stack.push((
                 actor,
@@ -293,8 +295,13 @@ fn offer_on_evolve_ability(actor: usize, state: &mut State, in_play_idx: usize) 
 }
 
 /// Called when a basic Pokémon is placed from hand onto the bench (index > 0).
-pub(crate) fn on_bench_from_hand(actor: usize, state: &mut State, card: &Card, bench_idx: usize) {
-    match get_ability_mechanic(card) {
+pub(crate) fn on_bench_from_hand(actor: usize, state: &mut State, _card: &Card, bench_idx: usize) {
+    // Read off the board, so an Ability silenced by Alolan Muk does not trigger.
+    let mechanic = state.in_play_pokemon[actor][bench_idx]
+        .as_ref()
+        .and_then(|pokemon| state.ability_mechanic(pokemon))
+        .cloned();
+    match mechanic.as_ref() {
         Some(AbilityMechanic::LegendaryDrive) => {
             if state.maybe_get_active(actor).is_none() {
                 return;
@@ -353,7 +360,8 @@ pub(crate) fn on_bench_from_hand(actor: usize, state: &mut State, card: &Card, b
 pub(crate) fn on_end_turn(player_ending_turn: usize, state: &mut State) {
     // Check if active Pokémon has an end-of-turn ability
     let active = state.get_active(player_ending_turn);
-    if let Some(mechanic) = get_ability_mechanic(&active.card) {
+    let mechanic = state.ability_mechanic(active).cloned();
+    if let Some(mechanic) = mechanic {
         if matches!(
             mechanic,
             AbilityMechanic::EndTurnDrawCardIfActive { amount: 1 }
@@ -366,7 +374,6 @@ pub(crate) fn on_end_turn(player_ending_turn: usize, state: &mut State) {
         }
         if let AbilityMechanic::EndTurnHealSelfIfActive { amount } = mechanic {
             debug!("Full-Mouth Manner: Healing 20 damage from active");
-            let amount = *amount;
             let blocked = state.healing_is_blocked();
             let active = state.get_active_mut(player_ending_turn);
             active.heal(amount, blocked);
@@ -467,7 +474,7 @@ pub(crate) fn on_end_turn(player_ending_turn: usize, state: &mut State) {
             .enumerate_in_play_pokemon(player_ending_turn)
             .filter_map(|(in_play_idx, pokemon)| {
                 if matches!(
-                    get_ability_mechanic(&pokemon.card),
+                    state.ability_mechanic(pokemon),
                     Some(AbilityMechanic::EndFirstTurnAttachEnergyToSelf {
                         energy_type: EnergyType::Lightning
                     })
@@ -615,15 +622,15 @@ fn apply_soothing_shore_healing(player_ending_turn: usize, state: &mut State) {
 /// Apply Bad Dreams ability damage: for each player's Darkrai in play, if that player's
 /// opponent has an Asleep Active Pokémon, deal 20 damage to it.
 fn apply_bad_dreams_damage(state: &mut State) {
+    let read: &State = state;
     let sources: Vec<(usize, usize, u32)> = (0..2)
         .flat_map(|player| {
-            state
-                .enumerate_in_play_pokemon(player)
+            read.enumerate_in_play_pokemon(player)
                 .filter_map(move |(idx, pokemon)| {
                     if pokemon.is_knocked_out() {
                         return None;
                     }
-                    get_ability_mechanic(&pokemon.card).and_then(|m| match m {
+                    read.ability_mechanic(pokemon).and_then(|m| match m {
                         AbilityMechanic::BadDreamsEndOfTurn { amount } => {
                             Some((player, idx, *amount))
                         }
@@ -672,7 +679,7 @@ pub(crate) fn can_play_support(state: &State) -> bool {
             .as_ref()
             .is_some_and(|opponent_active| {
                 matches!(
-                    get_ability_mechanic(&opponent_active.card),
+                    state.ability_mechanic(opponent_active),
                     Some(AbilityMechanic::NoOpponentSupportInActive)
                 )
             });
@@ -773,7 +780,7 @@ fn get_intimidating_fang_reduction(
     // Reads the unified effect list: Intimidating Fang (a passive ability) presents as a
     // `ReduceOpponentActiveDamage` effect on the Active defender.
     defenders_active
-        .get_effective_card_effects()
+        .get_effective_card_effects(state.abilities_are_off(defenders_active))
         .iter()
         .filter_map(|effect| match effect {
             CardEffect::ReduceOpponentActiveDamage { amount } => Some(*amount),
@@ -795,7 +802,7 @@ fn get_ability_damage_reduction(
     // Reads the unified effect list, so Cloyster's Shell Armor (a passive ability) is handled the
     // same way as any stored effect.
     let effect_reduction: u32 = receiving_pokemon
-        .get_effective_card_effects()
+        .get_effective_card_effects(state.abilities_are_off(receiving_pokemon))
         .iter()
         .filter_map(|effect| match effect {
             CardEffect::ReduceDamageFromAttacks { amount } => Some(*amount),
@@ -805,7 +812,7 @@ fn get_ability_damage_reduction(
 
     // Magnezone's Resilience Link depends on the rest of the board, so it can't be derived as a
     // CardEffect from the card alone.
-    let arceus_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
+    let arceus_reduction = match state.ability_mechanic(receiving_pokemon) {
         Some(AbilityMechanic::ReduceDamageFromAttacksIfArceusInPlay { amount })
             if has_arceus_in_play(state, target_player) =>
         {
@@ -817,7 +824,7 @@ fn get_ability_damage_reduction(
 
     // Mamoswine's Thick Fat depends on the attacker's type, so it can't be derived as a
     // CardEffect from the card alone.
-    let attacker_type_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
+    let attacker_type_reduction = match state.ability_mechanic(receiving_pokemon) {
         Some(AbilityMechanic::ReduceDamageFromAttacksByAttackerType {
             amount,
             attacker_types,
@@ -830,7 +837,7 @@ fn get_ability_damage_reduction(
 
     // Eiscue's Ice Face: only an undamaged Eiscue is wearing the ice, so this depends on the
     // Pokémon's current HP rather than on the card alone.
-    let full_hp_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
+    let full_hp_reduction = match state.ability_mechanic(receiving_pokemon) {
         Some(AbilityMechanic::ReduceDamageIfFullHp { amount })
             if !receiving_pokemon.is_damaged() =>
         {
@@ -842,7 +849,7 @@ fn get_ability_damage_reduction(
 
     // Falinks's Coordinated Unit needs a second Falinks on the board, so it too depends on
     // more than the card itself.
-    let formation_reduction = match get_ability_mechanic(&receiving_pokemon.card) {
+    let formation_reduction = match state.ability_mechanic(receiving_pokemon) {
         Some(AbilityMechanic::BoostAndReduceIfAnotherSameNameInPlay { reduction, .. })
             if has_another_with_same_name_in_play(state, target_player, receiving_pokemon) =>
         {
@@ -856,7 +863,7 @@ fn get_ability_damage_reduction(
     // of that player's Pokemon.
     let unown_reduction: u32 = state
         .enumerate_in_play_pokemon(target_player)
-        .filter_map(|(_, pokemon)| match get_ability_mechanic(&pokemon.card) {
+        .filter_map(|(_, pokemon)| match state.ability_mechanic(pokemon) {
             Some(AbilityMechanic::UnownDuo {
                 own_ability_title,
                 reduce_damage,
@@ -886,7 +893,7 @@ fn has_unown_with_other_ability(state: &State, player: usize, own_ability_title:
             .get_ability()
             .is_some_and(|ability| ability.title != own_ability_title)
             && matches!(
-                get_ability_mechanic(&pokemon.card),
+                state.ability_mechanic(pokemon),
                 Some(AbilityMechanic::UnownDuo { .. } | AbilityMechanic::LookAtTopCard)
             )
     })
@@ -1293,7 +1300,7 @@ pub(crate) fn modify_damage(
     let target_effects: Vec<CardEffect> = if skip_target_effects {
         Vec::new()
     } else {
-        receiving_pokemon.get_effective_card_effects()
+        receiving_pokemon.get_effective_card_effects(state.abilities_are_off(receiving_pokemon))
     };
 
     // Safeguard (Oricorio): prevent all damage from the opponent's Pokémon ex.
@@ -1566,7 +1573,7 @@ fn calculate_type_boost_bonus(
             own_ability_title,
             increase_damage,
             ..
-        }) = get_ability_mechanic(&pokemon.card)
+        }) = state.ability_mechanic(pokemon)
         {
             if *increase_damage > 0
                 && has_unown_with_other_ability(state, attacking_player, own_ability_title)
@@ -1581,7 +1588,7 @@ fn calculate_type_boost_bonus(
 
     // Check each Pokemon in play for type-boosting abilities
     for (in_play_idx, pokemon) in state.enumerate_in_play_pokemon(attacking_player) {
-        if let Some(mechanic) = get_ability_mechanic(&pokemon.card) {
+        if let Some(mechanic) = state.ability_mechanic(pokemon) {
             match mechanic {
                 AbilityMechanic::IncreaseDamageForEvolvesFromOnBench {
                     pokemon_name,
@@ -1629,7 +1636,7 @@ pub(crate) fn get_attack_cost(
     let opponent = (attacking_player + 1) % 2;
     if let Some(opponent_active) = &state.in_play_pokemon[opponent][0] {
         if matches!(
-            get_ability_mechanic(&opponent_active.card),
+            state.ability_mechanic(opponent_active),
             Some(AbilityMechanic::IncreaseAttackCostForOpponentActive { amount: 1 })
         ) {
             modified_cost.push(EnergyType::Colorless);
@@ -1701,7 +1708,7 @@ fn tool_attached_cost(mut cost: Vec<EnergyType>, state: &State, player: usize) -
     let Some(AbilityMechanic::ReduceAttackCostIfToolAttached {
         energy_type,
         amount,
-    }) = get_ability_mechanic(&active.card)
+    }) = state.ability_mechanic(active)
     else {
         return cost;
     };
@@ -1726,7 +1733,7 @@ fn vigor_link_cost(mut cost: Vec<EnergyType>, state: &State, player: usize) -> V
     let Some(active) = state.in_play_pokemon[player][0].as_ref() else {
         return cost;
     };
-    let reduction = match get_ability_mechanic(&active.card) {
+    let reduction = match state.ability_mechanic(active) {
         Some(AbilityMechanic::ReduceAttackCostIfArceusInPlay { amount })
             if has_arceus_in_play(state, player) =>
         {
@@ -1749,7 +1756,7 @@ fn future_system_cost(mut cost: Vec<EnergyType>, state: &State, player: usize) -
     let has_future_system = attacker_is_future
         && state.in_play_pokemon[player].iter().flatten().any(|p| {
             matches!(
-                get_ability_mechanic(&p.card),
+                state.ability_mechanic(p),
                 Some(AbilityMechanic::FutureSystem)
             )
         });
@@ -1949,7 +1956,7 @@ fn apply_offload_pass(
 
     let offload_energy = state.in_play_pokemon[knocked_out_player][knocked_out_idx]
         .as_ref()
-        .and_then(|pokemon| match get_ability_mechanic(&pokemon.card) {
+        .and_then(|pokemon| match state.ability_mechanic(pokemon) {
             Some(AbilityMechanic::MoveAllTypedEnergyToBenchOnKnockout { energy_type }) => {
                 Some(*energy_type)
             }
@@ -2046,16 +2053,20 @@ pub(crate) fn on_attack_knockout(
         return;
     }
 
-    let Some(attacking_pokemon) = state.in_play_pokemon[attacking_ref.0][attacking_ref.1].as_mut()
+    let Some(attacking_pokemon) = state.in_play_pokemon[attacking_ref.0][attacking_ref.1].as_ref()
     else {
         return;
     };
-    if matches!(
-        get_ability_mechanic(&attacking_pokemon.card),
+    if !matches!(
+        state.ability_mechanic(attacking_pokemon),
         Some(AbilityMechanic::ProtectSelfNextTurnAfterAttackKnockout)
     ) {
-        attacking_pokemon.add_effect(CardEffect::PreventAllDamageAndEffects, 1);
+        return;
     }
+    let attacking_pokemon = state.in_play_pokemon[attacking_ref.0][attacking_ref.1]
+        .as_mut()
+        .expect("Attacking Pokemon was there a moment ago");
+    attacking_pokemon.add_effect(CardEffect::PreventAllDamageAndEffects, 1);
 }
 
 // Test Colorless is wildcard when counting energy

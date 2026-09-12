@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::State;
 use crate::{
     actions::{
-        abilities::AbilityMechanic, card_effect_from_ability_mechanic, get_ability_mechanic,
-        has_ability_mechanic,
+        abilities::AbilityMechanic, card_effect_from_ability_mechanic, printed_ability_mechanic,
     },
     card_ids::CardId,
     database::get_card_by_enum,
@@ -142,7 +141,7 @@ impl PlayedCard {
     /// card that raises it.
     pub fn max_tools(&self) -> usize {
         if matches!(
-            crate::actions::get_ability_mechanic(&self.card),
+            printed_ability_mechanic(&self.card),
             Some(crate::actions::abilities::AbilityMechanic::AllowTwoTools)
         ) {
             2
@@ -212,7 +211,7 @@ impl PlayedCard {
     pub(crate) fn types(&self) -> Vec<EnergyType> {
         let mut types: Vec<EnergyType> = self.printed_energy_type().into_iter().collect();
         if let Some(crate::actions::abilities::AbilityMechanic::DoubleType { energy_types }) =
-            crate::actions::get_ability_mechanic(&self.card)
+            printed_ability_mechanic(&self.card)
         {
             for energy_type in energy_types {
                 if !types.contains(energy_type) {
@@ -311,7 +310,7 @@ impl PlayedCard {
         if let Some(AbilityMechanic::IncreaseHpPerAttachedEnergy {
             energy_type,
             amount,
-        }) = get_ability_mechanic(&self.card)
+        }) = printed_ability_mechanic(&self.card)
         {
             let mut matching_count = self
                 .attached_energy
@@ -381,9 +380,27 @@ impl PlayedCard {
     /// separately scanning for defensive abilities, so a passive like Cloyster's Shell Armor and a
     /// stored effect like Carracosta's Blocking Shell are handled through one list. Derived effects
     /// are present exactly while the ability-holder is in play (no turn duration).
-    pub(crate) fn get_effective_card_effects(&self) -> Vec<CardEffect> {
+    /// Whether Budew's Prickly Powder is switching this Pokémon's Abilities off.
+    ///
+    /// Reads the raw effect list on purpose. `get_effective_card_effects` derives effects *from*
+    /// Abilities, so asking it whether Abilities are off would recurse forever - which is exactly
+    /// how the first attempt at this card hung.
+    pub(crate) fn abilities_off_by_effect(&self) -> bool {
+        self.effects
+            .iter()
+            .any(|(effect, _)| matches!(effect, CardEffect::NoAbilities))
+    }
+
+    /// The effects on this Pokémon, plus the one its Ability contributes.
+    ///
+    /// `abilities_off` is `State::abilities_are_off(pokemon)`; a silenced Pokémon contributes
+    /// nothing. It is a parameter because the answer depends on the whole board (Alolan Muk).
+    pub(crate) fn get_effective_card_effects(&self, abilities_off: bool) -> Vec<CardEffect> {
         let mut effects = self.get_active_effects();
-        if let Some(mechanic) = get_ability_mechanic(&self.card) {
+        if abilities_off {
+            return effects;
+        }
+        if let Some(mechanic) = printed_ability_mechanic(&self.card) {
             if let Some(derived) = card_effect_from_ability_mechanic(mechanic) {
                 effects.push(derived);
             }
@@ -511,7 +528,7 @@ impl fmt::Debug for PlayedCard {
 pub fn ally_hp_bonus_for(state: &State, player: usize) -> Option<(EnergyType, u32)> {
     state
         .enumerate_in_play_pokemon(player)
-        .find_map(|(_, pokemon)| match get_ability_mechanic(&pokemon.card) {
+        .find_map(|(_, pokemon)| match state.ability_mechanic(pokemon) {
             Some(AbilityMechanic::IncreaseHpOfYourTypedPokemon {
                 energy_type,
                 amount,
@@ -521,9 +538,9 @@ pub fn ally_hp_bonus_for(state: &State, player: usize) -> Option<(EnergyType, u3
 }
 
 pub fn has_serperior_jungle_totem(state: &State, player: usize) -> bool {
-    state.enumerate_in_play_pokemon(player).any(|(_, pokemon)| {
-        has_ability_mechanic(&pokemon.card, &AbilityMechanic::DoubleGrassEnergy)
-    })
+    state
+        .enumerate_in_play_pokemon(player)
+        .any(|(_, pokemon)| state.has_ability(pokemon, &AbilityMechanic::DoubleGrassEnergy))
 }
 
 #[cfg(test)]

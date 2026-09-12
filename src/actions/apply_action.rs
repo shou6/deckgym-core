@@ -4,7 +4,6 @@ use log::debug;
 use rand::{distributions::WeightedIndex, prelude::Distribution, rngs::StdRng, Rng};
 
 use crate::{
-    actions::effect_ability_mechanic_map::{get_ability_mechanic, has_ability_mechanic},
     actions::{
         abilities::AbilityMechanic,
         apply_abilities_action::forecast_ability,
@@ -791,8 +790,16 @@ pub(crate) fn apply_place_card(
     state.refresh_starting_plains_bonus_for_idx(actor, index);
     state.refresh_double_grass_bonus_for_player(actor);
     state.refresh_ally_hp_bonus_for_player(actor);
+    // Read the Ability off the board so that Alolan Muk's Power of Alchemy silences it.
+    let entry_mechanic = {
+        let read: &State = state;
+        read.in_play_pokemon[actor][index]
+            .as_ref()
+            .and_then(|pokemon| read.ability_mechanic(pokemon))
+            .cloned()
+    };
     // SoothingWind (Ogerpon ex) / Flower Shield (Comfey): cure status conditions on entry.
-    if let Some(AbilityMechanic::SoothingWind { energy_type }) = get_ability_mechanic(card) {
+    if let Some(AbilityMechanic::SoothingWind { energy_type }) = entry_mechanic.as_ref() {
         debug!("SoothingWind: Pokémon entered play – curing status conditions for player {actor}");
         state.apply_soothing_wind_for_player(actor, energy_type.as_ref());
     }
@@ -801,7 +808,12 @@ pub(crate) fn apply_place_card(
     } else {
         state.remove_card_from_hand(actor, card);
         let placed_in_bench = index != 0;
-        if placed_in_bench && has_ability_mechanic(card, &AbilityMechanic::InfiltratingInspection) {
+        if placed_in_bench
+            && matches!(
+                entry_mechanic.as_ref(),
+                Some(AbilityMechanic::InfiltratingInspection)
+            )
+        {
             debug!("Misdreavus's Infiltrating Inspection: Opponent's hand is revealed (no-op in AI context)");
         }
         if placed_in_bench {

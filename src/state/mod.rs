@@ -10,7 +10,8 @@ use std::hash::Hash;
 
 use crate::{
     actions::abilities::AbilityMechanic,
-    actions::{has_ability_mechanic, SimpleAction},
+    actions::printed_ability_mechanic,
+    actions::SimpleAction,
     deck::Deck,
     effects::TurnEffect,
     models::{Card, EnergyType, StatusCondition},
@@ -454,9 +455,7 @@ impl State {
             return None;
         }
         self.enumerate_in_play_pokemon(player)
-            .find(|(_, pokemon)| {
-                has_ability_mechanic(&pokemon.card, &AbilityMechanic::VictoryStarReflip)
-            })
+            .find(|(_, pokemon)| self.has_ability(pokemon, &AbilityMechanic::VictoryStarReflip))
             .map(|(idx, _)| idx)
     }
 
@@ -477,9 +476,7 @@ impl State {
             return None;
         }
         self.enumerate_in_play_pokemon(player)
-            .find(|(_, pokemon)| {
-                has_ability_mechanic(&pokemon.card, &AbilityMechanic::LuxuryCoinReflip)
-            })
+            .find(|(_, pokemon)| self.has_ability(pokemon, &AbilityMechanic::LuxuryCoinReflip))
             .map(|(idx, _)| idx)
     }
 
@@ -614,7 +611,7 @@ impl State {
             return;
         };
 
-        if has_ability_mechanic(&pokemon.card, &AbilityMechanic::ImmuneToStatusConditions) {
+        if self.has_ability(pokemon, &AbilityMechanic::ImmuneToStatusConditions) {
             debug!("Fabled Luster: Pokémon is immune to status conditions");
             return;
         }
@@ -628,8 +625,8 @@ impl State {
         }
 
         // Hoothoot's Insomnia: immune to one condition rather than all of them.
-        if has_ability_mechanic(
-            &pokemon.card,
+        if self.has_ability(
+            pokemon,
             &AbilityMechanic::ImmuneToStatusCondition { condition: status },
         ) {
             debug!("Insomnia: Pokémon is immune to {status:?}");
@@ -639,7 +636,7 @@ impl State {
         // Regice's Crystal Body: "Prevent all effects of attacks used by your opponent's Pokémon
         // done to this Pokémon." Special Conditions are what attacks put on a defender, so the
         // ability reads as immunity to them (damage is untouched).
-        if has_ability_mechanic(&pokemon.card, &AbilityMechanic::PreventAllAttackEffects) {
+        if self.has_ability(pokemon, &AbilityMechanic::PreventAllAttackEffects) {
             debug!("Crystal Body: Pokémon is immune to the effects of attacks");
             return;
         }
@@ -656,9 +653,7 @@ impl State {
         // SoothingWind (Ogerpon ex) / Flower Shield (Comfey): if any of this player's Pokémon
         // has the ability, Pokémon meeting the energy requirement are immune to Special Conditions.
         for p in self.in_play_pokemon[player].iter().flatten() {
-            if let Some(AbilityMechanic::SoothingWind { energy_type }) =
-                crate::actions::get_ability_mechanic(&p.card)
-            {
+            if let Some(AbilityMechanic::SoothingWind { energy_type }) = self.ability_mechanic(p) {
                 let is_protected = match energy_type {
                     None => !pokemon.attached_energy.is_empty(),
                     Some(t) => pokemon.attached_energy.contains(t),
@@ -715,13 +710,50 @@ impl State {
 
     /// Discards a Pokemon from play, moving it, its evolution chain, and its energies
     ///  to the discard pile.
+    /// Whether this Pokémon's Abilities are switched off - by Budew's Prickly Powder on it, or by
+    /// an Alolan Muk in play if it is a Basic Pokémon.
+    pub(crate) fn abilities_are_off(&self, pokemon: &PlayedCard) -> bool {
+        pokemon.abilities_off_by_effect()
+            || (pokemon.card.is_basic() && self.basic_abilities_are_locked())
+    }
+
+    /// Alolan Muk's Power of Alchemy, from either side of the table. Reads the printed Ability
+    /// (and the raw "no Abilities" effect) so that this never recurses through
+    /// `abilities_are_off`.
+    fn basic_abilities_are_locked(&self) -> bool {
+        (0..2).any(|player| {
+            self.enumerate_in_play_pokemon(player).any(|(_, pokemon)| {
+                !pokemon.abilities_off_by_effect()
+                    && matches!(
+                        printed_ability_mechanic(&pokemon.card),
+                        Some(AbilityMechanic::NoAbilitiesForBasics)
+                    )
+            })
+        })
+    }
+
+    /// This Pokémon's Ability, or `None` while it is switched off.
+    pub(crate) fn ability_mechanic<'a>(
+        &self,
+        pokemon: &'a PlayedCard,
+    ) -> Option<&'a AbilityMechanic> {
+        if self.abilities_are_off(pokemon) {
+            return None;
+        }
+        printed_ability_mechanic(&pokemon.card)
+    }
+
+    /// Whether this Pokémon has `mechanic` and may use it.
+    pub(crate) fn has_ability(&self, pokemon: &PlayedCard, mechanic: &AbilityMechanic) -> bool {
+        self.ability_mechanic(pokemon) == Some(mechanic)
+    }
+
     /// Claydol's Heal Block: "Pokémon (both yours and your opponent's) can't be healed."
     /// One Claydol anywhere in play stops every heal on the table.
     pub(crate) fn healing_is_blocked(&self) -> bool {
         (0..2).any(|player| {
-            self.enumerate_in_play_pokemon(player).any(|(_, pokemon)| {
-                has_ability_mechanic(&pokemon.card, &AbilityMechanic::HealBlock)
-            })
+            self.enumerate_in_play_pokemon(player)
+                .any(|(_, pokemon)| self.has_ability(pokemon, &AbilityMechanic::HealBlock))
         })
     }
 
