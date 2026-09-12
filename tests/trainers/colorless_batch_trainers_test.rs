@@ -685,6 +685,38 @@ fn test_penny_borrows_a_supporter_from_their_deck() {
     );
 }
 
+/// Penny borrows the effect without the card ever being played, so the borrowed Supporter's own
+/// "can I be played?" check is skipped. Cyrus needs a damaged Benched Pokémon on the other side;
+/// without one it used to push an empty list of choices and the game had no legal move.
+#[test]
+fn test_penny_skips_a_supporter_that_cannot_be_played() {
+    let (mut game, mut state) = board_with(
+        CardId::A3b069Penny,
+        vec![PlayedCard::from_id(CardId::A1033Charmander)],
+        // The opponent's Bench is empty, so Cyrus has nothing to switch in.
+        vec![PlayedCard::from_id(CardId::A1001Bulbasaur)],
+    );
+    state.hands[0].clear();
+    state.hands[0].push(get_card_by_enum(CardId::A3b069Penny));
+    state.decks[1].cards = vec![get_card_by_enum(CardId::A2150Cyrus)];
+    state.decks[0].cards = vec![get_card_by_enum(CardId::A1053Squirtle); 4];
+    game.set_state(state);
+
+    play(&mut game, CardId::A3b069Penny);
+
+    let state = game.get_state_clone();
+    assert!(
+        state
+            .move_generation_stack
+            .iter()
+            .all(|(_, choices)| !choices.is_empty()),
+        "選択肢が 0 件のまま積まれている: {:?}",
+        state.move_generation_stack,
+    );
+    let (_, actions) = state.generate_possible_actions();
+    assert!(!actions.is_empty(), "打つ手がなくなっている");
+}
+
 /// Iono is implemented, but its B2a prints were not wired up.
 #[test]
 fn test_iono_b2a_print_works_too() {

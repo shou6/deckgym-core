@@ -919,7 +919,10 @@ fn copy_random_opponent_supporter(acting_player: usize, state: &State) -> Outcom
         .iter()
         .filter_map(|card| match card {
             crate::models::Card::Trainer(trainer)
-                if trainer.trainer_card_type == crate::models::TrainerType::Supporter =>
+                if trainer.trainer_card_type == crate::models::TrainerType::Supporter
+                    && crate::actions::apply_trainer_action::borrowed_supporter_is_playable(
+                        state, trainer,
+                    ) =>
             {
                 Some(trainer.clone())
             }

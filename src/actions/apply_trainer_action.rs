@@ -286,6 +286,17 @@ pub fn forecast_trainer_action(
     }
 }
 
+/// Whether a borrowed Supporter's effect can actually run right now.
+///
+/// Penny and Smeargle's Portrait run an effect without the card being played, so the card's own
+/// "can I be played?" check never happens. Some effects need a target (Cyrus needs a damaged
+/// Benched Pokemon on the other side) and push an empty list of choices when there is none,
+/// leaving the game with no legal move. Ask the move generator instead of guessing.
+pub(crate) fn borrowed_supporter_is_playable(state: &State, supporter: &TrainerCard) -> bool {
+    crate::move_generation::trainer_move_generation_implementation(state, supporter)
+        .is_some_and(|choices| !choices.is_empty())
+}
+
 /// Penny: "Look at a random Supporter card that's not Penny from your opponent's deck and shuffle
 /// it back into their deck. Use the effect of that card as the effect of this card." The card
 /// stays in their deck - only its effect is borrowed, the way Smeargle's Portrait borrows one out
@@ -298,7 +309,8 @@ fn penny_outcomes(acting_player: usize, state: &State) -> Outcomes {
         .filter_map(|card| match card {
             Card::Trainer(trainer)
                 if trainer.trainer_card_type == TrainerType::Supporter
-                    && trainer.name != "Penny" =>
+                    && trainer.name != "Penny"
+                    && borrowed_supporter_is_playable(state, trainer) =>
             {
                 Some(trainer.clone())
             }

@@ -867,3 +867,41 @@ fn test_smeargle_portrait_borrows_a_supporter() {
     );
     assert_eq!(state.hands[1].len(), 2, "the opponent keeps their cards");
 }
+
+/// Portrait runs the effect without the card being played, so the borrowed Supporter's own
+/// "can I be played?" check is skipped. Cyrus needs a damaged Benched Pokemon on the other side;
+/// without one it used to push an empty list of choices and the game had no legal move.
+#[test]
+fn test_smeargle_portrait_skips_a_supporter_that_cannot_be_played() {
+    let mut game = get_initialized_game(0);
+    let mut state = game.get_state_clone();
+    state.set_board(
+        vec![PlayedCard::from_id(CardId::B2130Smeargle)],
+        // The opponent's Bench is empty, so Cyrus has nothing to switch in.
+        vec![played_card_with_base_hp(CardId::A1053Squirtle, 300, vec![])],
+    );
+    state.hands[0].clear();
+    state.hands[1] = vec![get_card_by_enum(CardId::A2150Cyrus)];
+    state.decks[0].cards = vec![get_card_by_enum(CardId::A1001Bulbasaur); 4];
+    state.current_player = 0;
+    state.turn_count = 5;
+    game.set_state(state);
+
+    game.apply_action(&Action {
+        actor: 0,
+        action: SimpleAction::UseAbility { in_play_idx: 0 },
+        is_stack: false,
+    });
+
+    let state = game.get_state_clone();
+    assert!(
+        state
+            .move_generation_stack
+            .iter()
+            .all(|(_, choices)| !choices.is_empty()),
+        "選択肢が 0 件のまま積まれている: {:?}",
+        state.move_generation_stack,
+    );
+    let (_, actions) = state.generate_possible_actions();
+    assert!(!actions.is_empty(), "打つ手がなくなっている");
+}
